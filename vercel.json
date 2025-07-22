@@ -1,7 +1,19 @@
 {
   "version": 2,
-  "public": true,
-  "cleanUrls": true,
-  "trailingSlash": false
+  "env": {
+    "SUPABASE_URL": "@supabase-url",
+    "SUPABASE_ANON_KEY": "@supabase-anon-key"
+  },
+  "build": {
+    "env": {
+      "SUPABASE_URL": "@supabase-url", 
+      "SUPABASE_ANON_KEY": "@supabase-anon-key"
+    }
+  },
+  "functions": {
+    "app.js": {
+      "memory": 128
+    }
+  }
 }
 
