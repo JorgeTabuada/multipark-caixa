@@ -1,65 +1,44 @@
 {
-  "name": "caixa-multipark",
+  "name": "multipark-caixa",
   "version": "1.0.0",
-  "description": "Sistema de gestão e validação de dados para Multipark",
+  "description": "Sistema de gestão e validação de caixa para Multipark - Comparação entre Odoo, Back Office e validação de entregas",
   "main": "index.html",
   "scripts": {
-    "dev": "python3 -m http.server 3000",
-    "start": "python3 -m http.server 8080",
-    "build": "echo 'Static site - no build required'",
-    "test": "echo 'Tests not implemented yet'",
+    "start": "serve -s . -l 3000",
+    "build": "echo 'Static site - no build needed'",
+    "dev": "serve -s . -l 3000",
+    "test": "echo 'No tests specified'",
     "deploy": "vercel --prod"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JorgeTabuada/multipark-caixa.git"
   },
   "keywords": [
     "multipark",
     "caixa",
     "odoo",
+    "back-office",
     "excel",
     "validation",
-    "dashboard",
-    "supabase"
+    "supabase",
+    "dashboard"
   ],
-  "author": {
-    "name": "Jorge Tabuada",
-    "email": "jorgetabuada@airpark.pt",
-    "company": "Multipark"
-  },
-  "license": "PROPRIETARY",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/multipark/caixa-multipark.git"
-  },
+  "author": "Jorge Tabuada <jorge@multipark.pt>",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/multipark/caixa-multipark/issues",
-    "email": "jorgetabuada@airpark.pt"
+    "url": "https://github.com/JorgeTabuada/multipark-caixa/issues"
   },
-  "homepage": "https://caixa-multipark.vercel.app",
+  "homepage": "https://multipark-caixa.vercel.app",
+  "dependencies": {
+    "xlsx": "^0.18.5",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
   "engines": {
-    "node": ">=14.0.0"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead",
-    "not ie <= 11"
-  ],
-  "dependencies": {},
-  "devDependencies": {},
-  "files": [
-    "index.html",
-    "login.html",
-    "css/",
-    "js/",
-    "uploads/*-TESTE*",
-    "uploads/*-teste*",
-    "docs/",
-    "README.md"
-  ],
-  "config": {
-    "supabase": {
-      "url": "https://uvcmgzhwiibjcygqsjrm.supabase.co",
-      "project": "Caixa Multipark"
-    }
+    "node": ">=16.0.0"
   }
 }
 

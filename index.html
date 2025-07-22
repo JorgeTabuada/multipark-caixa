@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +15,10 @@
     <!-- Scripts de bibliotecas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Scripts da aplicação -->
+    <script src="js/config.js"></script>
+    <script src="js/error-handler.js"></script>
 </head>
 <body>
     <!-- Loading inicial -->
@@ -37,7 +41,7 @@
                         <h1>Caixa Multipark</h1>
                     </div>
                     <div class="user-info">
-                        <span id="user-email">utilizador@exemplo.com</span>
+                        <span id="user-email">Carregando...</span>
                         <button class="refresh-btn" id="refresh-dashboard" title="Atualizar Dados">
                             <i class="fas fa-sync-alt"></i>
                         </button>
@@ -47,7 +51,7 @@
                     </div>
                 </div>
                 <div class="session-info">
-                    <span id="current-date">22/07/2025</span>
+                    <span id="current-date">Carregando...</span>
                     <span id="last-sync">Última sincronização: --:--</span>
                 </div>
             </div>
