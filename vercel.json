@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "caixa-multipark",
+  "name": "multipark-caixa",
   "builds": [
     {
       "src": "index.html",
@@ -78,16 +78,6 @@
       ]
     }
   ],
-  "env": {
-    "SUPABASE_URL": "https://uvcmgzhwiibjcygqsjrm.supabase.co",
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY1MDUzNTUsImV4cCI6MjAzMjA4MTM1NX0.f8Z3wNiQJIlhGKdJHsGC4jbpCcDWcpK7RdPvVYF2Q"
-  },
-  "functions": {
-    "app.js": {
-      "memory": 128
-    }
-  },
-  "regions": ["fra1"],
-  "public": true
+  "regions": ["fra1"]
 }
 
