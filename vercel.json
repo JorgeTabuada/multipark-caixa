@@ -1,19 +1,4 @@
 {
-  "version": 2,
-  "env": {
-    "SUPABASE_URL": "@supabase-url",
-    "SUPABASE_ANON_KEY": "@supabase-anon-key"
-  },
-  "build": {
-    "env": {
-      "SUPABASE_URL": "@supabase-url", 
-      "SUPABASE_ANON_KEY": "@supabase-anon-key"
-    }
-  },
-  "functions": {
-    "app.js": {
-      "memory": 128
-    }
-  }
+  "version": 2
 }
 
