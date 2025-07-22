@@ -1,17 +1,26 @@
-// ===== SUPABASE INTEGRATION - VERSÃO COMPLETA =====
-// Este arquivo substitui o supabase.js atual e integra tudo
+// ===== SUPABASE INTEGRATION - VERSÃO SIMPLIFICADA =====
+// Configuração direta sem variáveis de ambiente
 
-// Configuração do Supabase - usando variáveis de ambiente
-const SUPABASE_URL = process.env.SUPABASE_URL || window.ENV?.SUPABASE_URL || 'https://uvcmgzhwiibjcygqsjrm.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || window.ENV?.SUPABASE_ANON_KEY || '';
+// Configuração do Supabase - credenciais diretas
+const SUPABASE_URL = 'https://uvcmgzhwiibjcygqsjrm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY1MDUzNTUsImV4cCI6MjAzMjA4MTM1NX0.1MDUzNTUslmV4cCI6MTMjA4MTM1NX0';
 
-// Verificar se as credenciais estão disponíveis
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('❌ Credenciais Supabase não configuradas. Verifique as variáveis de ambiente.');
-}
+// Log para debug
+console.log('🔧 Configuração Supabase:', {
+    url: SUPABASE_URL,
+    hasKey: !!SUPABASE_ANON_KEY,
+    keyLength: SUPABASE_ANON_KEY.length
+});
 
 // Inicializar cliente Supabase
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient;
+try {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Cliente Supabase inicializado com sucesso');
+} catch (error) {
+    console.error('❌ Erro ao inicializar Supabase:', error);
+    throw error;
+}
 
 // Classe principal para gerir todos os dados
 class CaixaMultiparkAPI {
