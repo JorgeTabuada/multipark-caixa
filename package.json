@@ -1,0 +1,65 @@
+{
+  "name": "caixa-multipark",
+  "version": "1.0.0",
+  "description": "Sistema de gestão e validação de dados para Multipark",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 3000",
+    "start": "python3 -m http.server 8080",
+    "build": "echo 'Static site - no build required'",
+    "test": "echo 'Tests not implemented yet'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "multipark",
+    "caixa",
+    "odoo",
+    "excel",
+    "validation",
+    "dashboard",
+    "supabase"
+  ],
+  "author": {
+    "name": "Jorge Tabuada",
+    "email": "jorgetabuada@airpark.pt",
+    "company": "Multipark"
+  },
+  "license": "PROPRIETARY",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multipark/caixa-multipark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/multipark/caixa-multipark/issues",
+    "email": "jorgetabuada@airpark.pt"
+  },
+  "homepage": "https://caixa-multipark.vercel.app",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie <= 11"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "files": [
+    "index.html",
+    "login.html",
+    "css/",
+    "js/",
+    "uploads/*-TESTE*",
+    "uploads/*-teste*",
+    "docs/",
+    "README.md"
+  ],
+  "config": {
+    "supabase": {
+      "url": "https://uvcmgzhwiibjcygqsjrm.supabase.co",
+      "project": "Caixa Multipark"
+    }
+  }
+}
+
