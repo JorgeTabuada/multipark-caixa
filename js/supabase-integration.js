@@ -1,22 +1,44 @@
-// ===== SUPABASE INTEGRATION - VERSÃO SIMPLIFICADA =====
+// ===== SUPABASE INTEGRATION - VERSÃO CORRIGIDA =====
 // Configuração direta sem variáveis de ambiente
 
-// Configuração do Supabase - credenciais diretas
+// 🔧 INSTRUÇÕES PARA CORRIGIR O TOKEN:
+// 1. Vai ao teu dashboard Supabase: https://supabase.com/dashboard
+// 2. Seleciona o projeto: uvcmgzhwiibjcygqsjrm  
+// 3. Settings > API
+// 4. Copia a "anon public" key
+// 5. Substitui na linha abaixo
+
+// Configuração do Supabase
 const SUPABASE_URL = 'https://uvcmgzhwiibjcygqsjrm.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY1MDUzNTUsImV4cCI6MjAzMjA4MTM1NX0.1MDUzNTUslmV4cCI6MTMjA4MTM1NX0';
+
+// ⚠️ ATENÇÃO: SUBSTITUI ESTE TOKEN PELO TOKEN REAL DO DASHBOARD!
+// Este é um placeholder - o token real tem +200 caracteres
+const SUPABASE_ANON_KEY = 'SUBSTITUI_PELO_TOKEN_REAL_DO_DASHBOARD_SUPABASE';
+
+// Validação básica do token
+if (SUPABASE_ANON_KEY === 'SUBSTITUI_PELO_TOKEN_REAL_DO_DASHBOARD_SUPABASE') {
+    console.error('🚨 ERRO: Token do Supabase não configurado!');
+    console.error('🔧 VAI AO DASHBOARD DO SUPABASE E COPIA O TOKEN!');
+    alert('🔑 Token do Supabase não configurado!\n\nVai ao dashboard do Supabase > Settings > API\ne substitui o token no ficheiro js/supabase-integration.js');
+}
 
 // Log para debug
 console.log('🔧 Configuração Supabase:', {
     url: SUPABASE_URL,
-    hasKey: !!SUPABASE_ANON_KEY,
+    hasKey: SUPABASE_ANON_KEY !== 'SUBSTITUI_PELO_TOKEN_REAL_DO_DASHBOARD_SUPABASE',
     keyLength: SUPABASE_ANON_KEY.length
 });
 
 // Inicializar cliente Supabase
 let supabaseClient;
 try {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Cliente Supabase inicializado com sucesso');
+    if (SUPABASE_ANON_KEY !== 'SUBSTITUI_PELO_TOKEN_REAL_DO_DASHBOARD_SUPABASE') {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Cliente Supabase inicializado com sucesso');
+    } else {
+        console.error('❌ Não é possível inicializar - token em falta');
+        throw new Error('Token do Supabase não configurado');
+    }
 } catch (error) {
     console.error('❌ Erro ao inicializar Supabase:', error);
     throw error;
@@ -33,11 +55,15 @@ class CaixaMultiparkAPI {
 
     // ===== AUTENTICAÇÃO =====
     async initAuth() {
+        if (!this.client) {
+            throw new Error('Cliente Supabase não inicializado - verifica o token!');
+        }
+
         const { data: { user } } = await this.client.auth.getUser();
         this.currentUser = user;
         
         if (user) {
-            console.log('Utilizador autenticado:', user.email);
+            console.log('✅ Utilizador autenticado:', user.email);
             return user;
         }
         
@@ -49,21 +75,30 @@ class CaixaMultiparkAPI {
     }
 
     async login(email, password) {
+        if (!this.client) {
+            throw new Error('Cliente Supabase não inicializado - verifica o token!');
+        }
+
+        console.log('🔐 Tentando login com:', email);
+        
         const { data, error } = await this.client.auth.signInWithPassword({
             email: email,
             password: password
         });
 
         if (error) {
+            console.error('❌ Erro de login:', error);
             throw new Error(error.message);
         }
 
         this.currentUser = data.user;
-        console.log('Login bem-sucedido:', data.user.email);
+        console.log('✅ Login bem-sucedido:', data.user.email);
         return data.user;
     }
 
     async logout() {
+        if (!this.client) return;
+        
         const { error } = await this.client.auth.signOut();
         if (error) console.error('Erro no logout:', error);
         this.currentUser = null;
@@ -402,11 +437,15 @@ class CaixaMultiparkAPI {
         if (this.isInitialized) return;
 
         try {
+            if (!this.client) {
+                throw new Error('Cliente Supabase não inicializado - verifica o token!');
+            }
+            
             await this.initAuth();
             this.isInitialized = true;
-            console.log('CaixaMultiparkAPI inicializado com sucesso!');
+            console.log('✅ CaixaMultiparkAPI inicializado com sucesso!');
         } catch (error) {
-            console.error('Erro na inicialização:', error);
+            console.error('❌ Erro na inicialização:', error);
             throw error;
         }
     }
@@ -424,8 +463,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         await caixaAPI.initialize();
     } catch (error) {
-        console.error('Erro na inicialização automática:', error);
+        console.error('❌ Erro na inicialização automática:', error);
+        
+        // Mostrar alerta se o token estiver em falta
+        if (error.message.includes('Token do Supabase não configurado') || 
+            error.message.includes('verifica o token')) {
+            setTimeout(() => {
+                alert('🔑 Token do Supabase não configurado!\n\n' +
+                      '📋 Para corrigir:\n' +
+                      '1. Vai ao dashboard do Supabase\n' +
+                      '2. Settings > API\n' +
+                      '3. Copia a "anon public" key\n' +
+                      '4. Substitui no ficheiro js/supabase-integration.js');
+            }, 1000);
+        }
     }
 });
 
-console.log('📊 Caixa Multipark API carregada com sucesso!');
+console.log('📊 Caixa Multipark API carregada - Necessário configurar token!');
