@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -211,26 +211,36 @@
             </div>
             
             <div class="test-users">
-                <h4>Utilizadores de Teste:</h4>
-                <div class="test-user" onclick="fillLogin('admin@multipark.com', 'admin123')">
-                    👤 admin@multipark.com / admin123
+                <h4>Utilizadores Disponíveis:</h4>
+                <div class="test-user" onclick="fillLogin('jorgetabuada@airpark.pt', 'suapassword')">
+                    👤 jorgetabuada@airpark.pt / suapassword
                 </div>
-                <div class="test-user" onclick="fillLogin('user@multipark.com', 'user123')">
-                    👤 user@multipark.com / user123
-                </div>
-                <div class="test-user" onclick="fillLogin('manager@multipark.com', 'manager123')">
-                    👤 manager@multipark.com / manager123
+                <div class="test-user" onclick="fillLogin('teste@teste.pt', 'testepassword')">
+                    👤 teste@teste.pt / testepassword
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuração do Supabase - ATUALIZAR COM AS NOVAS CREDENCIAIS
+        // Configuração do Supabase - TOKEN CORRETO
         const SUPABASE_URL = 'https://uvcmgzhwiibjcygqsjrm.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTY1MDUzNTUsImV4cCI6MjAzMjA4MTM1NX0.f8Z3wNiQJIlhGKdJHsGC4jbpCcDWcpK7RdPvVYF2Q';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwNDE3NTUsImV4cCI6MjA2MzYxNzc1NX0.br9Ah2nlwNNfigdLo8uSWgWavZU4wlvWMxDMyClQVoQ';
         
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Inicializar Supabase com tratamento de erro
+        let supabaseClient;
+        try {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase inicializado com sucesso');
+        } catch (error) {
+            console.error('❌ Erro ao inicializar Supabase:', error);
+            document.getElementById('alert-container').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Erro de configuração. Contacte o suporte.
+                </div>
+            `;
+        }
         
         // Elementos do DOM
         const loginForm = document.getElementById('login-form');
@@ -244,14 +254,22 @@
         
         // Verificar se já está logado
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                // Se já estiver logado, redirecionar para a aplicação principal
-                window.location.href = 'index.html';
+            if (!supabaseClient) return;
+            
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (user) {
+                    showAlert('Já está autenticado! Redirecionando...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Erro ao verificar utilizador:', error);
             }
         });
         
-        // Função para preencher login (utilizadores de teste)
+        // Função para preencher login
         function fillLogin(email, password) {
             emailInput.value = email;
             passwordInput.value = password;
@@ -288,6 +306,12 @@
         // Evento de login
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            if (!supabaseClient) {
+                showAlert('Erro de configuração. Recarregue a página.');
+                return;
+            }
+            
             clearAlert();
             
             const email = emailInput.value.trim();
@@ -300,6 +324,7 @@
             
             try {
                 setLoading(true);
+                console.log('🔐 Tentando login com:', email);
                 
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
@@ -307,9 +332,11 @@
                 });
                 
                 if (error) {
+                    console.error('❌ Erro Supabase:', error);
                     throw error;
                 }
                 
+                console.log('✅ Login bem-sucedido:', data);
                 showAlert('Login realizado com sucesso!', 'success');
                 
                 // Redirecionar após 1 segundo
@@ -318,7 +345,7 @@
                 }, 1000);
                 
             } catch (error) {
-                console.error('Erro de login:', error);
+                console.error('❌ Erro completo de login:', error);
                 
                 let errorMessage = 'Erro ao fazer login. Tente novamente.';
                 
@@ -328,6 +355,10 @@
                     errorMessage = 'Por favor, confirme o seu email antes de fazer login.';
                 } else if (error.message.includes('Too many requests')) {
                     errorMessage = 'Muitas tentativas de login. Tente novamente mais tarde.';
+                } else if (error.message.includes('Invalid API key')) {
+                    errorMessage = 'Erro de configuração. Contacte o suporte técnico.';
+                } else if (error.message) {
+                    errorMessage = `Erro: ${error.message}`;
                 }
                 
                 showAlert(errorMessage);
@@ -339,6 +370,11 @@
         // Reset de password
         forgotPasswordLink.addEventListener('click', async (e) => {
             e.preventDefault();
+            
+            if (!supabaseClient) {
+                showAlert('Erro de configuração. Recarregue a página.');
+                return;
+            }
             
             const email = emailInput.value.trim();
             if (!email) {
@@ -362,11 +398,9 @@
         });
         
         console.log('🔐 Sistema de autenticação carregado!');
-        console.log('Utilizadores de teste disponíveis:');
-        console.log('- admin@multipark.com / admin123');
-        console.log('- user@multipark.com / user123');
-        console.log('- manager@multipark.com / manager123');
+        console.log('📧 Utilizadores disponíveis:');
+        console.log('- jorgetabuada@airpark.pt');
+        console.log('- teste@teste.pt');
     </script>
 </body>
 </html>
-
