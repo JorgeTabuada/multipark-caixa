@@ -1,91 +1,162 @@
-// ===== CONFIGURAÇÃO CENTRALIZADA =====
-// Configurações da aplicação Caixa Multipark
+// ===== CONFIGURAÇÃO GLOBAL DA APLICAÇÃO =====
 
-// Configuração regional
+// Configuração da aplicação
 const APP_CONFIG = {
-    // Localização
-    locale: 'pt-PT',
-    timezone: 'Europe/Lisbon',
-    currency: 'EUR',
-    
-    // Formatação
-    dateFormat: 'dd/MM/yyyy',
-    timeFormat: 'HH:mm:ss',
-    dateTimeFormat: 'dd/MM/yyyy HH:mm:ss',
-    
-    // Números
-    decimalSeparator: ',',
-    thousandsSeparator: '.',
-    currencySymbol: '€',
-    
-    // Aplicação
     name: 'Caixa Multipark',
     version: '1.0.0',
+    environment: 'production',
     
-    // Limites
+    // Formatação de dados
+    dateFormat: 'pt-PT',
+    currency: 'EUR',
+    locale: 'pt-PT',
+    
+    // Configurações de upload
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    maxRecords: 10000,
+    allowedFileTypes: ['.xlsx', '.xls'],
     
-    // Timeouts
-    requestTimeout: 30000, // 30 segundos
-    retryAttempts: 3
+    // Configurações de UI
+    theme: 'default',
+    itemsPerPage: 25,
+    autoRefresh: false,
+    autoRefreshInterval: 30000, // 30 segundos
+    
+    // Configurações de validação
+    validation: {
+        licensePlatePattern: /^[A-Z0-9\-]{6,12}$/i,
+        priceMin: 0,
+        priceMax: 999999.99
+    },
+    
+    // Métodos de pagamento aceites
+    paymentMethods: [
+        'numerário',
+        'multibanco', 
+        'online',
+        'no pay'
+    ],
+    
+    // Status possíveis
+    status: {
+        PENDING: 'pending',
+        COMPLETED: 'completed',
+        ERROR: 'error',
+        VALIDATED: 'validated',
+        INCONSISTENT: 'inconsistent',
+        MISSING: 'missing'
+    }
 };
 
-// Função para obter data atual formatada
-function getCurrentDate() {
-    return new Date().toLocaleDateString('pt-PT', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-}
+// Utilitários globais
+const APP_UTILS = {
+    // Formatar data para PT
+    formatDate: (date) => {
+        if (!date) return 'N/A';
+        return new Date(date).toLocaleDateString('pt-PT', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric'
+        });
+    },
+    
+    // Formatar data e hora
+    formatDateTime: (date) => {
+        if (!date) return 'N/A';
+        return new Date(date).toLocaleString('pt-PT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    },
+    
+    // Formatar moeda
+    formatCurrency: (amount) => {
+        if (amount === null || amount === undefined || isNaN(amount)) return '0,00 €';
+        return new Intl.NumberFormat('pt-PT', {
+            style: 'currency',
+            currency: 'EUR'
+        }).format(amount);
+    },
+    
+    // Validar matrícula
+    validateLicensePlate: (plate) => {
+        if (!plate) return false;
+        return APP_CONFIG.validation.licensePlatePattern.test(plate.trim());
+    },
+    
+    // Validar preço
+    validatePrice: (price) => {
+        const num = parseFloat(price);
+        return !isNaN(num) && 
+               num >= APP_CONFIG.validation.priceMin && 
+               num <= APP_CONFIG.validation.priceMax;
+    },
+    
+    // Capitalizar primeira letra
+    capitalize: (str) => {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    },
+    
+    // Gerar ID único
+    generateId: () => {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    },
+    
+    // Verificar se ficheiro é válido
+    validateFile: (file) => {
+        if (!file) return { valid: false, error: 'Nenhum ficheiro selecionado' };
+        
+        // Verificar tamanho
+        if (file.size > APP_CONFIG.maxFileSize) {
+            return { 
+                valid: false, 
+                error: `Ficheiro muito grande. Máximo: ${(APP_CONFIG.maxFileSize / 1024 / 1024).toFixed(1)}MB` 
+            };
+        }
+        
+        // Verificar extensão
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        if (!APP_CONFIG.allowedFileTypes.includes(extension)) {
+            return { 
+                valid: false, 
+                error: `Tipo de ficheiro não permitido. Permitidos: ${APP_CONFIG.allowedFileTypes.join(', ')}` 
+            };
+        }
+        
+        return { valid: true };
+    },
+    
+    // Debounce para evitar múltiplas chamadas
+    debounce: (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+};
 
-// Função para obter data e hora atual formatada
-function getCurrentDateTime() {
-    return new Date().toLocaleString('pt-PT', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-}
-
-// Função para formatar valores monetários
-function formatCurrency(value) {
-    if (typeof value !== 'number') {
-        value = parseFloat(value) || 0;
+// Inicializar dados dinâmicos na página
+document.addEventListener('DOMContentLoaded', () => {
+    // Definir data atual
+    const currentDateEl = document.getElementById('current-date');
+    if (currentDateEl) {
+        currentDateEl.textContent = APP_UTILS.formatDate(new Date());
     }
     
-    return value.toLocaleString('pt-PT', {
-        style: 'currency',
-        currency: APP_CONFIG.currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
-
-// Função para formatar números
-function formatNumber(value, decimals = 0) {
-    if (typeof value !== 'number') {
-        value = parseFloat(value) || 0;
-    }
+    // Definir título da página
+    document.title = APP_CONFIG.name;
     
-    return value.toLocaleString('pt-PT', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals
-    });
-}
+    console.log(`📋 ${APP_CONFIG.name} v${APP_CONFIG.version} - Configuração carregada`);
+});
 
-// Exportar configurações
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        APP_CONFIG,
-        getCurrentDate,
-        getCurrentDateTime,
-        formatCurrency,
-        formatNumber
-    };
-}
-
+// Expor globalmente
+window.APP_CONFIG = APP_CONFIG;
+window.APP_UTILS = APP_UTILS;
