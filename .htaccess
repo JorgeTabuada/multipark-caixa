@@ -1,0 +1,18 @@
+# Force MIME types
+<Files "*.css">
+    ForceType text/css
+</Files>
+
+<Files "*.js">
+    ForceType application/javascript
+</Files>
+
+<Files "*.html">
+    ForceType text/html
+</Files>
+
+# Alternative approach
+AddType text/css .css
+AddType application/javascript .js
+AddType text/html .html
+
