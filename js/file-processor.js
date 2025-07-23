@@ -1,8 +1,8 @@
-// ===== FILE PROCESSOR INTEGRADO COM SUPABASE =====
-// Substitui o fileProcessor.js original com integração completa
+// ===== FILE PROCESSOR INTEGRADO COM SUPABASE - VERSÃO CORRIGIDA =====
+// Substitui o fileProcessor.js original com verificação de duplicados
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔥 FileProcessor integrado carregado!');
+    console.log('🔥 FileProcessor integrado com anti-duplicados carregado!');
     
     // Variáveis globais para armazenar os dados dos arquivos
     let odooData = null;
@@ -114,7 +114,63 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // ===== PROCESSAMENTO ESPECÍFICO POR TIPO =====
+    // ===== VERIFICAÇÃO DE DUPLICADOS =====
+    
+    async function checkForDuplicates(data, table, plateField = 'license_plate') {
+        if (!window.caixaAPI || !data || data.length === 0) return [];
+        
+        try {
+            // Obter todas as matrículas que vamos inserir
+            const newPlates = data
+                .map(record => normalizeLicensePlate(record[plateField] || record.licensePlate || ''))
+                .filter(plate => plate && plate.length > 0);
+            
+            if (newPlates.length === 0) return [];
+            
+            // Verificar quais já existem na base de dados
+            const { data: existing, error } = await window.caixaAPI.client
+                .from(table)
+                .select('license_plate')
+                .in('license_plate', newPlates);
+            
+            if (error) {
+                console.error(`Erro ao verificar duplicados em ${table}:`, error);
+                return [];
+            }
+            
+            const existingPlates = new Set(existing.map(row => row.license_plate));
+            console.log(`🔍 ${table}: ${existingPlates.size} duplicados encontrados de ${newPlates.length} registos`);
+            
+            return Array.from(existingPlates);
+            
+        } catch (error) {
+            console.error(`Erro na verificação de duplicados em ${table}:`, error);
+            return [];
+        }
+    }
+    
+    async function removeDuplicatesFromData(data, existingPlates, plateField = 'license_plate') {
+        const existingSet = new Set(existingPlates);
+        
+        const uniqueData = data.filter(record => {
+            const plate = normalizeLicensePlate(record[plateField] || record.licensePlate || '');
+            return !existingSet.has(plate);
+        });
+        
+        const duplicatesCount = data.length - uniqueData.length;
+        
+        if (duplicatesCount > 0) {
+            console.log(`🚫 ${duplicatesCount} duplicados removidos. ${uniqueData.length} novos registos restantes.`);
+        }
+        
+        return {
+            uniqueData,
+            duplicatesCount,
+            originalCount: data.length
+        };
+    }
+
+    // ===== PROCESSAMENTO ESPECÍFICO POR TIPO COM ANTI-DUPLICADOS =====
     
     async function processOdooFile(jsonData, filename) {
         if (!isOdooFile(jsonData)) {
@@ -122,57 +178,158 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const transformedData = transformOdooData(jsonData);
-        odooData = transformedData;
+        showProcessingIndicator('A verificar duplicados no Odoo...');
         
-        // Salvar no Supabase se API disponível
-        if (window.caixaAPI) {
+        // Transformar dados
+        const transformedData = transformOdooData(jsonData);
+        
+        // Verificar duplicados
+        const existingPlates = await checkForDuplicates(transformedData, 'sales_orders');
+        const result = await removeDuplicatesFromData(transformedData, existingPlates);
+        
+        if (result.duplicatesCount > 0) {
+            const proceed = confirm(
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
+                `• Total no ficheiro: ${result.originalCount}\n` +
+                `• Duplicados: ${result.duplicatesCount}\n` +
+                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `Queres continuar e importar apenas os novos registos?`
+            );
+            
+            if (!proceed) {
+                hideProcessingIndicator();
+                return;
+            }
+        }
+        
+        odooData = result.uniqueData;
+        
+        // Salvar no Supabase se houver dados únicos
+        if (result.uniqueData.length > 0 && window.caixaAPI) {
             try {
+                showProcessingIndicator(`A importar ${result.uniqueData.length} registos únicos do Odoo...`);
+                
                 await window.caixaAPI.createImportBatch({ 
                     salesFilename: filename,
                     batchDate: new Date().toISOString().split('T')[0] 
                 });
-                await window.caixaAPI.importSalesOrders(transformedData);
-                console.log('✅ Dados Odoo salvos no Supabase!');
+                await window.caixaAPI.importSalesOrders(result.uniqueData);
+                
+                console.log(`✅ ${result.uniqueData.length} novos registos Odoo salvos no Supabase!`);
+                
+                if (result.duplicatesCount > 0) {
+                    alert(`✅ Importação concluída!\n\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                          `• Duplicados ignorados: ${result.duplicatesCount}`);
+                }
+                
             } catch (error) {
                 console.error('❌ Erro ao salvar no Supabase:', error);
+                alert('Erro ao salvar no Supabase: ' + error.message);
             }
+        } else if (result.uniqueData.length === 0) {
+            alert('ℹ️ Todos os registos já existem na base de dados. Nenhum novo registo foi importado.');
         }
         
         checkFilesReady();
     }
     
     async function processBackOfficeFile(jsonData, filename) {
-        backOfficeData = jsonData;
+        showProcessingIndicator('A verificar duplicados no Back Office...');
         
-        // Salvar no Supabase se API disponível
-        if (window.caixaAPI) {
+        // Verificar duplicados
+        const existingPlates = await checkForDuplicates(jsonData, 'deliveries');
+        const result = await removeDuplicatesFromData(jsonData, existingPlates);
+        
+        if (result.duplicatesCount > 0) {
+            const proceed = confirm(
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
+                `• Total no ficheiro: ${result.originalCount}\n` +
+                `• Duplicados: ${result.duplicatesCount}\n` +
+                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `Queres continuar e importar apenas os novos registos?`
+            );
+            
+            if (!proceed) {
+                hideProcessingIndicator();
+                return;
+            }
+        }
+        
+        backOfficeData = result.uniqueData;
+        
+        // Salvar no Supabase se houver dados únicos
+        if (result.uniqueData.length > 0 && window.caixaAPI) {
             try {
-                await window.caixaAPI.importDeliveries(jsonData);
-                console.log('✅ Dados Back Office salvos no Supabase!');
+                showProcessingIndicator(`A importar ${result.uniqueData.length} registos únicos do Back Office...`);
+                await window.caixaAPI.importDeliveries(result.uniqueData);
+                console.log(`✅ ${result.uniqueData.length} novos registos Back Office salvos no Supabase!`);
+                
+                if (result.duplicatesCount > 0) {
+                    alert(`✅ Importação concluída!\n\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                          `• Duplicados ignorados: ${result.duplicatesCount}`);
+                }
+                
             } catch (error) {
                 console.error('❌ Erro ao salvar no Supabase:', error);
+                alert('Erro ao salvar no Supabase: ' + error.message);
             }
+        } else if (result.uniqueData.length === 0) {
+            alert('ℹ️ Todos os registos já existem na base de dados. Nenhum novo registo foi importado.');
         }
         
         checkFilesReady();
     }
     
     async function processCaixaFile(jsonData, filename) {
-        caixaData = jsonData;
+        showProcessingIndicator('A verificar duplicados na Caixa...');
         
-        // Salvar no Supabase se API disponível
-        if (window.caixaAPI) {
-            try {
-                await window.caixaAPI.importCashRecords(jsonData);
-                console.log('✅ Dados Caixa salvos no Supabase!');
-            } catch (error) {
-                console.error('❌ Erro ao salvar no Supabase:', error);
+        // Verificar duplicados
+        const existingPlates = await checkForDuplicates(jsonData, 'cash_records');
+        const result = await removeDuplicatesFromData(jsonData, existingPlates);
+        
+        if (result.duplicatesCount > 0) {
+            const proceed = confirm(
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
+                `• Total no ficheiro: ${result.originalCount}\n` +
+                `• Duplicados: ${result.duplicatesCount}\n` +
+                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `Queres continuar e importar apenas os novos registos?`
+            );
+            
+            if (!proceed) {
+                hideProcessingIndicator();
+                return;
             }
         }
         
+        caixaData = result.uniqueData;
+        
+        // Salvar no Supabase se houver dados únicos
+        if (result.uniqueData.length > 0 && window.caixaAPI) {
+            try {
+                showProcessingIndicator(`A importar ${result.uniqueData.length} registos únicos da Caixa...`);
+                await window.caixaAPI.importCashRecords(result.uniqueData);
+                console.log(`✅ ${result.uniqueData.length} novos registos Caixa salvos no Supabase!`);
+                
+                if (result.duplicatesCount > 0) {
+                    alert(`✅ Importação concluída!\n\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                          `• Duplicados ignorados: ${result.duplicatesCount}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar no Supabase:', error);
+                alert('Erro ao salvar no Supabase: ' + error.message);
+            }
+        } else if (result.uniqueData.length === 0) {
+            alert('ℹ️ Todos os registos já existem na base de dados. Nenhum novo registo foi importado.');
+            caixaData = [];  // Garantir que não há dados para processar
+        }
+        
         // Auto-iniciar validação se dados disponíveis
-        if (window.validator && caixaData) {
+        if (window.validator && caixaData && caixaData.length > 0) {
             setTimeout(() => {
                 window.validator.initCaixaValidation(caixaData);
             }, 500);
@@ -220,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function normalizeLicensePlate(plate) {
         if (!plate) return '';
         return String(plate)
-            .replace(/[\s\-\.\,\/\\\(\)\[\]\{\}\+\*\?\^\$\|]/g, '')
+            .replace(/[\\s\\-\\.\\,\\/\\\\\\(\\)\\[\\]\\{\\}\\+\\*\\?\\^\\$\\|]/g, '')
             .toLowerCase();
     }
     
@@ -229,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return String(parkName)
             .toLowerCase()
-            .replace(/\s+(parking|estacionamento|park|parque)\b/g, '')
+            .replace(/\\s+(parking|estacionamento|park|parque)\\b/g, '')
             .trim()
             .toUpperCase();
     }
@@ -245,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (typeof dateValue === 'string') {
                 if (dateValue.includes('/')) {
                     const cleanDate = dateValue.replace(/,/g, ' ');
-                    const parts = cleanDate.split(/[\/\s:]/);
+                    const parts = cleanDate.split(/[\\/\\s:]/);
                     if (parts.length >= 3) {
                         const day = parseInt(parts[0], 10);
                         const month = parseInt(parts[1], 10) - 1;
@@ -330,6 +487,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        if (odooData.length === 0 && backOfficeData.length === 0) {
+            alert('Não há dados únicos para comparar. Todos os registos já existem na base de dados.');
+            return;
+        }
+        
         showProcessingIndicator('A comparar dados...');
         
         setTimeout(() => {
@@ -365,11 +527,13 @@ document.addEventListener('DOMContentLoaded', function() {
         setBackOfficeData: (data) => { backOfficeData = data; },
         setCaixaData: (data) => { 
             caixaData = data;
-            console.log('🔄 Dados da Caixa atualizados:', caixaData.length);
+            console.log('🔄 Dados da Caixa atualizados:', caixaData?.length || 0);
         },
         normalizeLicensePlate,
         standardizeParkName,
         formatDate,
+        checkForDuplicates,
+        removeDuplicatesFromData,
         reprocessFiles: () => {
             // Função para reprocessar quando necessário
             if (odooData && backOfficeData) {
@@ -378,5 +542,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    console.log('✅ FileProcessor integrado pronto!');
+    console.log('✅ FileProcessor integrado com anti-duplicados pronto!');
 });
