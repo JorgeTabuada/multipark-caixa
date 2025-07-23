@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caixa Multipark</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/additional-styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
@@ -16,9 +14,406 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Scripts da aplicação -->
-    <script src="js/config.js"></script>
-    <script src="js/error-handler.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #667eea;
+        }
+
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .content-section {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(10px);
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-upload {
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload:hover {
+            border-color: #764ba2;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-upload-text {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #dee2e6;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .status-success {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-warning {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        .status-error {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-center {
+            justify-content: center;
+            align-items: center;
+        }
+
+        .flex-between {
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-info i {
+            color: #28a745;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
 </head>
 <body>
     <!-- Loading inicial -->
@@ -33,32 +428,15 @@
     <!-- Aplicação principal (oculta inicialmente) -->
     <div id="main-app" class="hidden">
         <!-- Cabeçalho -->
-        <header class="header">
-            <div class="container">
-                <div class="auth-header">
-                    <div class="logo">
-                        <i class="fas fa-parking fa-2x"></i>
-                        <h1>Caixa Multipark</h1>
-                    </div>
-                    <div class="user-info">
-                        <span id="user-email">Carregando...</span>
-                        <button class="refresh-btn" id="refresh-dashboard" title="Atualizar Dados">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="logout-btn" id="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Sair
-                        </button>
-                    </div>
-                </div>
-                <div class="session-info">
-                    <span id="current-date">Carregando...</span>
-                    <span id="last-sync">Última sincronização: --:--</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Navegação -->
         <div class="container">
+            <header class="header">
+                <div class="logo">
+                    <i class="fas fa-parking fa-2x"></i>
+                    <h1>Caixa Multipark</h1>
+                </div>
+            </header>
+
+            <!-- Navegação -->
             <nav class="nav-tabs">
                 <div class="nav-tab active" data-tab="import">Importação de Arquivos</div>
                 <div class="nav-tab" data-tab="compare">Comparação Odoo vs Back Office</div>
@@ -71,71 +449,63 @@
             <main class="main-content">
                 <!-- Seção de Importação de Arquivos -->
                 <section id="import-section" class="content-section active">
-                    <h2 class="card-title mb-20">Importação de Arquivos</h2>
+                    <h2 class="card-title mb-20"><i class="fas fa-upload"></i> Importação de Arquivos</h2>
                     
                     <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Arquivo Odoo (Sales Orders)</h3>
+                        <h3 class="card-title">Arquivo Odoo (Sales Orders)</h3>
+                        <div class="file-upload" id="odoo-upload">
+                            <i class="fas fa-file-excel file-upload-icon"></i>
+                            <p class="file-upload-text">Arraste e solte o arquivo Odoo aqui ou clique para selecionar</p>
+                            <input type="file" id="odoo-file" class="hidden" accept=".xlsx, .xls">
+                            <button class="btn btn-primary">Selecionar Arquivo</button>
                         </div>
-                        <div class="card-body">
-                            <div class="file-upload" id="odoo-upload">
-                                <i class="fas fa-file-excel file-upload-icon"></i>
-                                <p class="file-upload-text">Arraste e solte o arquivo Odoo aqui ou clique para selecionar</p>
-                                <input type="file" id="odoo-file" class="hidden" accept=".xlsx, .xls">
-                                <button class="btn btn-primary">Selecionar Arquivo</button>
-                            </div>
-                            <div id="odoo-file-info" class="hidden">
-                                <p><i class="fas fa-check-circle" style="color: green;"></i> Arquivo selecionado: <span id="odoo-filename"></span></p>
-                            </div>
+                        <div id="odoo-file-info" class="hidden file-info">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Arquivo selecionado: <span id="odoo-filename"></span></span>
                         </div>
                     </div>
 
                     <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Arquivo Back Office (Deliveries)</h3>
+                        <h3 class="card-title">Arquivo Back Office (Deliveries)</h3>
+                        <div class="file-upload" id="backoffice-upload">
+                            <i class="fas fa-file-excel file-upload-icon"></i>
+                            <p class="file-upload-text">Arraste e solte o arquivo Back Office aqui ou clique para selecionar</p>
+                            <input type="file" id="backoffice-file" class="hidden" accept=".xlsx, .xls">
+                            <button class="btn btn-primary">Selecionar Arquivo</button>
                         </div>
-                        <div class="card-body">
-                            <div class="file-upload" id="backoffice-upload">
-                                <i class="fas fa-file-excel file-upload-icon"></i>
-                                <p class="file-upload-text">Arraste e solte o arquivo Back Office aqui ou clique para selecionar</p>
-                                <input type="file" id="backoffice-file" class="hidden" accept=".xlsx, .xls">
-                                <button class="btn btn-primary">Selecionar Arquivo</button>
-                            </div>
-                            <div id="backoffice-file-info" class="hidden">
-                                <p><i class="fas fa-check-circle" style="color: green;"></i> Arquivo selecionado: <span id="backoffice-filename"></span></p>
-                            </div>
+                        <div id="backoffice-file-info" class="hidden file-info">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Arquivo selecionado: <span id="backoffice-filename"></span></span>
                         </div>
                     </div>
 
                     <div class="flex flex-center mt-20">
-                        <button id="process-files-btn" class="btn btn-primary" disabled>Processar Arquivos</button>
+                        <button id="process-files-btn" class="btn btn-primary" disabled>
+                            <i class="fas fa-cogs"></i> Processar Arquivos
+                        </button>
                     </div>
                 </section>
 
                 <!-- Seção de Comparação Odoo vs Back Office -->
                 <section id="compare-section" class="content-section">
-                    <h2 class="card-title mb-20">Comparação Odoo vs Back Office</h2>
+                    <h2 class="card-title mb-20"><i class="fas fa-balance-scale"></i> Comparação Odoo vs Back Office</h2>
                     
                     <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Resumo da Comparação</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-between mb-10">
-                                <div>
-                                    <p>Total de registros no Odoo: <strong id="odoo-count">0</strong></p>
-                                    <p>Total de registros no Back Office: <strong id="backoffice-count">0</strong></p>
-                                </div>
-                                <div>
-                                    <p>Registros com inconsistências: <strong id="inconsistency-count" class="status-error">0</strong></p>
-                                    <p>Registros ausentes: <strong id="missing-count" class="status-warning">0</strong></p>
-                                </div>
+                        <h3 class="card-title">Resumo da Comparação</h3>
+                        <div class="flex flex-between mb-20">
+                            <div>
+                                <p>Total de registros no Odoo: <strong id="odoo-count">0</strong></p>
+                                <p>Total de registros no Back Office: <strong id="backoffice-count">0</strong></p>
+                            </div>
+                            <div>
+                                <p>Registros com inconsistências: <strong id="inconsistency-count" class="status-error">0</strong></p>
+                                <p>Registros ausentes: <strong id="missing-count" class="status-warning">0</strong></p>
                             </div>
                         </div>
                     </div>
 
                     <div class="card">
-                        <div class="card-header">
+                        <div class="flex flex-between mb-20">
                             <h3 class="card-title">Registros</h3>
                             <div>
                                 <button class="btn btn-secondary" id="show-all-btn">Todos</button>
@@ -164,213 +534,92 @@
                             </table>
                         </div>
                     </div>
-
-                    <div class="flex flex-center mt-20">
-                        <button id="validate-comparison-btn" class="btn btn-primary" disabled>Validar e Avançar</button>
-                    </div>
                 </section>
 
                 <!-- Seção de Validação de Caixa -->
                 <section id="validate-section" class="content-section">
-                    <h2 class="card-title mb-20">Validação de Caixa</h2>
+                    <h2 class="card-title mb-20"><i class="fas fa-check-circle"></i> Validação de Caixa</h2>
                     
                     <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Arquivo de Caixa</h3>
+                        <h3 class="card-title">Arquivo de Caixa</h3>
+                        <div class="file-upload" id="caixa-upload">
+                            <i class="fas fa-file-excel file-upload-icon"></i>
+                            <p class="file-upload-text">Arraste e solte o arquivo de Caixa aqui ou clique para selecionar</p>
+                            <input type="file" id="caixa-file" class="hidden" accept=".xlsx, .xls">
+                            <button class="btn btn-primary">Selecionar Arquivo</button>
                         </div>
-                        <div class="card-body">
-                            <div class="file-upload" id="caixa-upload">
-                                <i class="fas fa-file-excel file-upload-icon"></i>
-                                <p class="file-upload-text">Arraste e solte o arquivo de Caixa aqui ou clique para selecionar</p>
-                                <input type="file" id="caixa-file" class="hidden" accept=".xlsx, .xls">
-                                <button class="btn btn-primary">Selecionar Arquivo</button>
-                            </div>
-                            <div id="caixa-file-info" class="hidden">
-                                <p><i class="fas fa-check-circle" style="color: green;"></i> Arquivo selecionado: <span id="caixa-filename"></span></p>
-                            </div>
+                        <div id="caixa-file-info" class="hidden file-info">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Arquivo selecionado: <span id="caixa-filename"></span></span>
                         </div>
                     </div>
 
-                    <div class="card mb-20 hidden" id="driver-selection">
-                        <div class="card-header">
-                            <h3 class="card-title">Selecionar Condutor</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label for="driver-select" class="form-label">Condutor:</label>
-                                <select id="driver-select" class="form-control">
-                                    <option value="">Selecione um condutor</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card hidden" id="driver-deliveries">
-                        <div class="card-header">
-                            <h3 class="card-title">Entregas do Condutor</h3>
-                            <div id="driver-summary">
-                                <p>Total de entregas: <strong id="delivery-count">0</strong></p>
-                            </div>
+                    <div class="card hidden" id="caixa-results">
+                        <h3 class="card-title">Resultados da Validação</h3>
+                        <div class="stats-grid" id="caixa-stats">
+                            <!-- Estatísticas serão inseridas aqui -->
                         </div>
                         <div class="table-container">
-                            <table class="table" id="deliveries-table">
+                            <table class="table" id="caixa-table">
                                 <thead>
                                     <tr>
-                                        <th>Alocação</th>
                                         <th>Matrícula</th>
-                                        <th>Data Checkout</th>
+                                        <th>Alocação</th>
                                         <th>Método Pagamento</th>
                                         <th>Valor</th>
+                                        <th>Condutor</th>
+                                        <th>Data</th>
                                         <th>Status</th>
-                                        <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
-                    </div>
-
-                    <div class="flex flex-between mt-20">
-                        <button id="add-caixa-btn" class="btn btn-secondary hidden">Adicionar Nova Folha de Caixa</button>
-                        <button id="close-caixa-btn" class="btn btn-primary hidden">Encerrar Caixa</button>
                     </div>
                 </section>
 
                 <!-- Seção de Dashboard e Estatísticas -->
                 <section id="dashboard-section" class="content-section">
-                    <h2 class="card-title mb-20">Dashboard e Estatísticas</h2>
+                    <h2 class="card-title mb-20"><i class="fas fa-chart-bar"></i> Dashboard e Estatísticas</h2>
                     
-                    <!-- Card para estatísticas de entregas efetuadas vs previstas -->
                     <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Entregas Efetuadas vs Previstas</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-between">
-                                <div>
-                                    <p>Entregas Efetuadas: <strong id="entregas-efetuadas">0</strong></p>
-                                    <p>Entregas Previstas: <strong id="entregas-previstas">0</strong></p>
-                                </div>
-                                <div>
-                                    <p>Percentual de Conclusão: <strong id="percentual-entregas" class="status-warning">0%</strong></p>
-                                </div>
+                        <h3 class="card-title">Resumo Geral</h3>
+                        <div class="flex flex-between">
+                            <div>
+                                <p>Total de entregas: <strong id="total-entregas">0</strong></p>
+                                <p>Valor total: <strong id="valor-total">0,00 €</strong></p>
+                            </div>
+                            <div>
+                                <p>Inconsistências: <strong id="total-inconsistencias" class="status-error">0</strong></p>
+                                <p>Taxa de sucesso: <strong id="taxa-sucesso" class="status-success">0%</strong></p>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="flex flex-between mb-20">
-                        <div class="card" style="width: 32%;">
-                            <div class="card-header">
-                                <h3 class="card-title">Resumo da Caixa</h3>
-                            </div>
-                            <div class="card-body">
-                                <p>Total da Caixa: <strong id="total-caixa">0,00 €</strong></p>
-                                <p>Total em Numerário: <strong id="total-numerario">0,00 €</strong></p>
-                                <p>Total em Multibanco: <strong id="total-multibanco">0,00 €</strong></p>
-                                <p>Total No Pay: <strong id="total-nopay">0,00 €</strong></p>
-                                <p>Total Online: <strong id="total-online">0,00 €</strong></p>
-                            </div>
-                        </div>
-                        
-                        <div class="card" style="width: 32%;">
-                            <div class="card-header">
-                                <h3 class="card-title">Entregas por Método</h3>
-                            </div>
-                            <div class="card-body">
-                                <p>Entregas em Numerário: <strong id="count-numerario">0</strong></p>
-                                <p>Entregas em Multibanco: <strong id="count-multibanco">0</strong></p>
-                                <p>Entregas No Pay: <strong id="count-nopay">0</strong></p>
-                                <p>Entregas Online: <strong id="count-online">0</strong></p>
-                                <p>Total de Entregas: <strong id="count-total">0</strong></p>
-                            </div>
-                        </div>
-                        
-                        <div class="card" style="width: 32%;">
-                            <div class="card-header">
-                                <h3 class="card-title">Comparativo</h3>
-                            </div>
-                            <div class="card-body">
-                                <p>Caixa Prevista (BO): <strong id="previsto-bo">0,00 €</strong></p>
-                                <p>Caixa Prevista (Odoo): <strong id="previsto-odoo">0,00 €</strong></p>
-                                <p>Caixa Efetiva: <strong id="efetiva-caixa">0,00 €</strong></p>
-                                <p>Diferença: <strong id="diferenca-caixa">0,00 €</strong></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Card para estatísticas por condutor -->
-                    <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Estatísticas por Condutor</h3>
-                        </div>
-                        <div class="card-body">
-                            <div id="condutor-stats-container">
-                                <p class="text-center">A carregar estatísticas...</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Gráficos</h3>
-                        </div>
-                        <div class="card-body flex flex-between">
-                            <div style="width: 48%;">
-                                <canvas id="chart-brands"></canvas>
-                            </div>
+
+                    <div class="card">
+                        <h3 class="card-title">Gráficos</h3>
+                        <div class="flex flex-between">
                             <div style="width: 48%;">
                                 <canvas id="chart-payments"></canvas>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Todas as Entregas</h3>
-                        </div>
-                        <div class="table-container">
-                            <table class="table" id="all-deliveries-table">
-                                <thead>
-                                    <tr>
-                                        <th>Matrícula</th>
-                                        <th>Data</th>
-                                        <th>Marca</th>
-                                        <th>Método Pagamento</th>
-                                        <th>Valor</th>
-                                        <th>Condutor</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                            <div style="width: 48%;">
+                                <canvas id="chart-status"></canvas>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- Seção de Exportação -->
                 <section id="export-section" class="content-section">
-                    <h2 class="card-title mb-20">Exportação</h2>
-                    
-                    <div class="card mb-20">
-                        <div class="card-header">
-                            <h3 class="card-title">Exportar Dados</h3>
-                        </div>
-                        <div class="card-body">
-                            <p>Exporte os dados processados para um arquivo Excel.</p>
-                            <div class="flex flex-center mt-20">
-                                <button id="export-btn" class="btn btn-primary">Exportar para Excel</button>
-                            </div>
-                        </div>
-                    </div>
+                    <h2 class="card-title mb-20"><i class="fas fa-download"></i> Exportação</h2>
                     
                     <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Histórico de Exportações</h3>
-                        </div>
-                        <div class="card-body">
-                            <div id="export-history">
-                                <p class="text-center">A carregar histórico...</p>
-                            </div>
+                        <h3 class="card-title">Exportar Dados</h3>
+                        <p>Exporte os dados processados para um arquivo Excel.</p>
+                        <div class="flex flex-center mt-20">
+                            <button id="export-btn" class="btn btn-primary">
+                                <i class="fas fa-file-excel"></i> Exportar para Excel
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -378,53 +627,744 @@
         </div>
     </div>
 
-    <!-- Status de conexão -->
-    <div id="connection-status" class="connection-status connected">
-        <i class="fas fa-wifi"></i> Conectado ao Supabase
-    </div>
-
-    <!-- Modais -->
+    <!-- Modal para detalhes -->
     <div class="modal-overlay" id="details-modal-overlay">
         <div class="modal">
             <div class="modal-header">
                 <h3>Detalhes do Registro</h3>
-                <button class="modal-close" onclick="document.getElementById('details-modal-overlay').style.display = 'none';">&times;</button>
+                <button class="modal-close" onclick="closeModal('details-modal-overlay')">&times;</button>
             </div>
             <div class="modal-body" id="details-modal-body"></div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="edit-modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Resolver Problema</h3>
-                <button class="modal-close" onclick="document.getElementById('edit-modal-overlay').style.display = 'none';">&times;</button>
-            </div>
-            <div class="modal-body" id="edit-modal-body"></div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" id="save-resolution-btn">Salvar</button>
-                <button class="btn btn-secondary" onclick="document.getElementById('edit-modal-overlay').style.display = 'none';">Cancelar</button>
-            </div>
-        </div>
-    </div>
+    <script>
+        // Configuração Supabase - API KEY ATUALIZADA
+        const SUPABASE_URL = 'https://uvcmgzhwiibjcygqsjrm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2Y21nemh3aWliamN5Z3FzanJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwNDE3NTUsImV4cCI6MjA2MzYxNzc1NX0.br9Ah2nlwNNfigdLo8uSWgWavZU4wlvWMxDMyClQVoQ';
 
-    <div class="modal-overlay" id="validate-modal-overlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Validar Entrega</h3>
-                <button class="modal-close" onclick="document.getElementById('validate-modal-overlay').style.display = 'none';">&times;</button>
-            </div>
-            <div class="modal-body" id="validate-modal-body"></div>
-        </div>
-    </div>
+        // Variáveis globais
+        let supabase;
+        let odooData = [];
+        let backofficeData = [];
+        let caixaData = [];
+        let comparisonData = [];
 
-    <!-- Scripts da aplicação na ordem correta -->
-    <script src="js/supabase-integration.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/file-processor.js"></script>
-    <script src="js/validation-system.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/notifications.js"></script>
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Caixa Multipark - Versão Corrigida v2.1');
+            console.log('📅 Data:', new Date().toLocaleDateString('pt-PT'));
+            console.log('🔑 Nova API Key configurada');
+            
+            initializeSupabase();
+            initializeApp();
+            setupEventListeners();
+            
+            // Remover loading após 2 segundos
+            setTimeout(() => {
+                document.getElementById('app-loading').style.display = 'none';
+                document.getElementById('main-app').classList.remove('hidden');
+                showNotification('Aplicação Caixa Multipark iniciada com nova API key', 'success');
+            }, 2000);
+        });
+
+        // Inicializar Supabase
+        function initializeSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Supabase inicializado com nova API key');
+                console.log('🔗 URL:', SUPABASE_URL);
+                console.log('🔑 Key length:', SUPABASE_ANON_KEY.length);
+            } catch (error) {
+                console.error('❌ Erro ao inicializar Supabase:', error);
+                showNotification('Erro ao conectar com a base de dados', 'error');
+            }
+        }
+
+        // Inicializar aplicação
+        function initializeApp() {
+            // Configurar navegação por tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            navTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.getAttribute('data-tab');
+                    
+                    // Remover active de todas as tabs
+                    navTabs.forEach(t => t.classList.remove('active'));
+                    contentSections.forEach(s => s.classList.remove('active'));
+                    
+                    // Adicionar active à tab clicada
+                    tab.classList.add('active');
+                    document.getElementById(targetTab + '-section').classList.add('active');
+                });
+            });
+        }
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Upload de ficheiros Odoo
+            setupFileUpload('odoo', handleOdooFile);
+            
+            // Upload de ficheiros Back Office
+            setupFileUpload('backoffice', handleBackofficeFile);
+            
+            // Upload de ficheiros Caixa
+            setupFileUpload('caixa', handleCaixaFile);
+            
+            // Botão de processamento
+            const processBtn = document.getElementById('process-files-btn');
+            processBtn.addEventListener('click', processFiles);
+            
+            // Botão de exportação
+            const exportBtn = document.getElementById('export-btn');
+            exportBtn.addEventListener('click', exportToExcel);
+        }
+
+        // Configurar upload de ficheiros
+        function setupFileUpload(type, handler) {
+            const uploadArea = document.getElementById(type + '-upload');
+            const fileInput = document.getElementById(type + '-file');
+            const button = uploadArea.querySelector('.btn');
+
+            // Click no botão
+            button.addEventListener('click', () => fileInput.click());
+            
+            // Click na área
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#764ba2';
+            });
+            
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#667eea';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#667eea';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handler(files[0]);
+                }
+            });
+            
+            // Mudança no input
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handler(e.target.files[0]);
+                }
+            });
+        }
+
+        // Processar ficheiro Odoo
+        function handleOdooFile(file) {
+            console.log('📁 Processando ficheiro Odoo:', file.name);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    console.log('📊 Dados brutos Odoo:', jsonData.slice(0, 3));
+                    
+                    // Mapear dados do Odoo
+                    odooData = jsonData.map(row => ({
+                        matricula: row.imma || row.IMA || row.licensePlate || '',
+                        alocacao: row.parking_name || row.Alocação || row.alocation || '',
+                        preco: parseFloat(row.price_to_pay || row.price || row.Preço || 0) || 0,
+                        marca: row.brand || row.Marca || '',
+                        data: row.date_start || row.Data || '',
+                        original: row
+                    })).filter(item => item.matricula);
+                    
+                    console.log('✅ Dados Odoo processados:', odooData.length, 'registros');
+                    console.log('📋 Primeiros dados Odoo:', odooData.slice(0, 3));
+                    
+                    // Mostrar info do ficheiro
+                    document.getElementById('odoo-filename').textContent = file.name;
+                    document.getElementById('odoo-file-info').classList.remove('hidden');
+                    
+                    // Verificar se pode processar
+                    checkProcessButton();
+                    
+                    showNotification(`Ficheiro Odoo carregado: ${odooData.length} registros`, 'success');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao processar ficheiro Odoo:', error);
+                    showNotification('Erro ao processar ficheiro Odoo', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Processar ficheiro Back Office
+        function handleBackofficeFile(file) {
+            console.log('📁 Processando ficheiro Back Office:', file.name);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    console.log('📊 Dados brutos Back Office:', jsonData.slice(0, 3));
+                    
+                    // Mapear dados do Back Office
+                    backofficeData = jsonData.map(row => ({
+                        matricula: row.licensePlate || row.IMA || row.imma || '',
+                        alocacao: row.alocation || row.Alocação || row.parking_name || '',
+                        preco: parseFloat(row.bookingPrice || row.Preço || row.price || 0) || 0,
+                        marca: row.brand || row.Marca || '',
+                        data: row.date || row.Data || '',
+                        original: row
+                    })).filter(item => item.matricula);
+                    
+                    console.log('✅ Dados Back Office processados:', backofficeData.length, 'registros');
+                    console.log('📋 Primeiros dados Back Office:', backofficeData.slice(0, 3));
+                    
+                    // Mostrar info do ficheiro
+                    document.getElementById('backoffice-filename').textContent = file.name;
+                    document.getElementById('backoffice-file-info').classList.remove('hidden');
+                    
+                    // Verificar se pode processar
+                    checkProcessButton();
+                    
+                    showNotification(`Ficheiro Back Office carregado: ${backofficeData.length} registros`, 'success');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao processar ficheiro Back Office:', error);
+                    showNotification('Erro ao processar ficheiro Back Office', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // FUNÇÃO CORRIGIDA: Processar ficheiro Caixa
+        function handleCaixaFile(file) {
+            console.log('📁 Processando ficheiro Caixa:', file.name);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    console.log('📊 Dados brutos Caixa:', jsonData.slice(0, 3));
+                    console.log('📋 Colunas disponíveis:', Object.keys(jsonData[0] || {}));
+                    
+                    // MAPEAMENTO CORRETO para ficheiro de caixa
+                    caixaData = jsonData.map(row => ({
+                        matricula: row.licensePlate || row.IMA || row.imma || '',
+                        alocacao: row.alocation || row.Alocação || row.parking_name || '',
+                        metodo: row.paymentMethod || row.Método || row.payment_method || '',
+                        valor: parseFloat(row.bookingPrice || row.deliveryPrice || row.Valor || row.amount || row.priceOnDelivery || 0) || 0,
+                        condutor: row.condutorEntrega || row.Condutor || row.driver || row.condutorMovimentacao || '',
+                        data: row.checkOut || row.Data || row.date || row.checkoutDate || '',
+                        status: row.stats || row.Status || row.status || '',
+                        original: row
+                    })).filter(item => item.matricula);
+                    
+                    console.log('✅ Dados Caixa processados:', caixaData.length, 'registros');
+                    console.log('📋 Primeiros dados Caixa mapeados:', caixaData.slice(0, 3));
+                    
+                    // Mostrar info do ficheiro
+                    document.getElementById('caixa-filename').textContent = file.name;
+                    document.getElementById('caixa-file-info').classList.remove('hidden');
+                    
+                    // Mostrar resultados da caixa
+                    showCaixaResults();
+                    
+                    // Enviar para Supabase
+                    saveCaixaToSupabase();
+                    
+                    showNotification(`Ficheiro Caixa carregado: ${caixaData.length} registros`, 'success');
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao processar ficheiro Caixa:', error);
+                    showNotification('Erro ao processar ficheiro Caixa', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Verificar se pode processar
+        function checkProcessButton() {
+            const processBtn = document.getElementById('process-files-btn');
+            
+            console.log('🔍 Verificando botão de processamento...');
+            console.log('📊 Odoo data length:', odooData.length);
+            console.log('📊 Back Office data length:', backofficeData.length);
+            
+            if (odooData.length > 0 && backofficeData.length > 0) {
+                processBtn.disabled = false;
+                processBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                processBtn.style.cursor = 'pointer';
+                console.log('✅ Botão de processamento ATIVADO');
+            } else {
+                processBtn.disabled = true;
+                processBtn.style.background = '#ccc';
+                processBtn.style.cursor = 'not-allowed';
+                console.log('❌ Botão de processamento DESATIVADO');
+            }
+        }
+
+        // Processar ficheiros
+        function processFiles() {
+            console.log('🔄 Iniciando processamento dos ficheiros...');
+            
+            if (odooData.length === 0 || backofficeData.length === 0) {
+                showNotification('Carregue ambos os ficheiros primeiro', 'warning');
+                return;
+            }
+            
+            try {
+                // Comparar dados
+                comparisonData = [];
+                
+                // Processar dados do Back Office
+                backofficeData.forEach(boItem => {
+                    const odooItem = odooData.find(o => o.matricula === boItem.matricula);
+                    
+                    let status = 'success';
+                    if (!odooItem) {
+                        status = 'missing';
+                    } else if (Math.abs(boItem.preco - odooItem.preco) > 0.01) {
+                        status = 'inconsistent';
+                    }
+                    
+                    comparisonData.push({
+                        matricula: boItem.matricula,
+                        alocacao: boItem.alocacao,
+                        precoBO: boItem.preco,
+                        precoOdoo: odooItem ? odooItem.preco : 0,
+                        marca: boItem.marca || (odooItem ? odooItem.marca : ''),
+                        status: status,
+                        backoffice: boItem,
+                        odoo: odooItem
+                    });
+                });
+                
+                // Adicionar itens só no Odoo
+                odooData.forEach(odooItem => {
+                    const exists = comparisonData.find(c => c.matricula === odooItem.matricula);
+                    if (!exists) {
+                        comparisonData.push({
+                            matricula: odooItem.matricula,
+                            alocacao: odooItem.alocacao,
+                            precoBO: 0,
+                            precoOdoo: odooItem.preco,
+                            marca: odooItem.marca,
+                            status: 'missing',
+                            backoffice: null,
+                            odoo: odooItem
+                        });
+                    }
+                });
+                
+                console.log('✅ Comparação concluída:', comparisonData.length, 'registros');
+                
+                // Atualizar interface
+                updateComparisonTable();
+                updateDashboard();
+                
+                // Enviar para Supabase
+                saveDataToSupabase();
+                
+                // Mudar para tab de comparação
+                document.querySelector('.nav-tab[data-tab="compare"]').click();
+                
+                showNotification('Ficheiros processados com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar ficheiros:', error);
+                showNotification('Erro ao processar ficheiros', 'error');
+            }
+        }
+
+        // Salvar dados no Supabase
+        async function saveDataToSupabase() {
+            try {
+                console.log('💾 Enviando dados para Supabase...');
+                
+                // Salvar dados do Odoo
+                if (odooData.length > 0) {
+                    const { error: odooError } = await supabase
+                        .from('sales_orders')
+                        .insert(odooData.map(item => ({
+                            license_plate: item.matricula,
+                            alocation: item.alocacao,
+                            booking_price: item.preco,
+                            brand: item.marca,
+                            raw_data: item.original
+                        })));
+                    
+                    if (odooError) {
+                        console.error('❌ Erro ao salvar Odoo:', odooError);
+                    } else {
+                        console.log('✅ Dados Odoo salvos no Supabase');
+                    }
+                }
+                
+                // Salvar dados do Back Office
+                if (backofficeData.length > 0) {
+                    const { error: boError } = await supabase
+                        .from('deliveries')
+                        .insert(backofficeData.map(item => ({
+                            license_plate: item.matricula,
+                            alocation: item.alocacao,
+                            booking_price: item.preco,
+                            brand: item.marca,
+                            raw_data: item.original
+                        })));
+                    
+                    if (boError) {
+                        console.error('❌ Erro ao salvar Back Office:', boError);
+                    } else {
+                        console.log('✅ Dados Back Office salvos no Supabase');
+                    }
+                }
+                
+                // Salvar comparações
+                if (comparisonData.length > 0) {
+                    const { error: compError } = await supabase
+                        .from('comparisons')
+                        .insert(comparisonData.map(item => ({
+                            license_plate: item.matricula,
+                            alocation: item.alocacao,
+                            price_bo: item.precoBO,
+                            price_odoo: item.precoOdoo,
+                            brand: item.marca,
+                            status: item.status
+                        })));
+                    
+                    if (compError) {
+                        console.error('❌ Erro ao salvar comparações:', compError);
+                    } else {
+                        console.log('✅ Comparações salvas no Supabase');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro geral ao salvar no Supabase:', error);
+            }
+        }
+
+        // Salvar dados de caixa no Supabase
+        async function saveCaixaToSupabase() {
+            try {
+                console.log('💰 Enviando dados de caixa para Supabase...');
+                
+                if (caixaData.length > 0) {
+                    const { error } = await supabase
+                        .from('cash_records')
+                        .insert(caixaData.map(item => ({
+                            license_plate: item.matricula,
+                            driver: item.condutor,
+                            payment_method: item.metodo,
+                            booking_price: item.valor,
+                            price_on_delivery: item.valor,
+                            price_difference: 0,
+                            campaign: item.original.campaign || '',
+                            raw_data: item.original
+                        })));
+                    
+                    if (error) {
+                        console.error('❌ Erro ao salvar caixa:', error);
+                    } else {
+                        console.log('✅ Dados de caixa salvos no Supabase');
+                        showNotification('Dados enviados para Supabase', 'success');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar caixa no Supabase:', error);
+            }
+        }
+
+        // Atualizar tabela de comparação
+        function updateComparisonTable() {
+            const tbody = document.querySelector('#comparison-table tbody');
+            const inconsistentCount = comparisonData.filter(item => item.status === 'inconsistent').length;
+            const missingCount = comparisonData.filter(item => item.status === 'missing').length;
+            
+            // Atualizar contadores
+            document.getElementById('odoo-count').textContent = odooData.length;
+            document.getElementById('backoffice-count').textContent = backofficeData.length;
+            document.getElementById('inconsistency-count').textContent = inconsistentCount;
+            document.getElementById('missing-count').textContent = missingCount;
+            
+            // Limpar tabela
+            tbody.innerHTML = '';
+            
+            // Adicionar dados
+            comparisonData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                
+                let statusText = '';
+                let statusClass = '';
+                
+                switch (item.status) {
+                    case 'success':
+                        statusText = '✅ OK';
+                        statusClass = 'status-success';
+                        break;
+                    case 'inconsistent':
+                        statusText = '⚠️ Diferença';
+                        statusClass = 'status-warning';
+                        break;
+                    case 'missing':
+                        statusText = '❌ Ausente';
+                        statusClass = 'status-error';
+                        break;
+                }
+                
+                row.innerHTML = `
+                    <td>${item.matricula}</td>
+                    <td>${item.alocacao}</td>
+                    <td>${item.precoBO.toFixed(2)} €</td>
+                    <td>${item.precoOdoo.toFixed(2)} €</td>
+                    <td>${item.marca}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="showDetails(${index})">
+                            <i class="fas fa-eye"></i> Ver Detalhes
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // FUNÇÃO CORRIGIDA: Mostrar resultados da caixa
+        function showCaixaResults() {
+            const resultsDiv = document.getElementById('caixa-results');
+            const statsDiv = document.getElementById('caixa-stats');
+            const tableBody = document.querySelector('#caixa-table tbody');
+            
+            if (caixaData.length === 0) return;
+            
+            console.log('📊 Mostrando resultados da caixa:', caixaData.length, 'registros');
+            
+            // Calcular estatísticas
+            const stats = {
+                total: caixaData.length,
+                totalValor: 0,
+                numerario: { count: 0, valor: 0 },
+                multibanco: { count: 0, valor: 0 },
+                nopay: { count: 0, valor: 0 },
+                online: { count: 0, valor: 0 },
+                outros: { count: 0, valor: 0 }
+            };
+            
+            caixaData.forEach(item => {
+                const valor = item.valor || 0;
+                const metodo = (item.metodo || '').toLowerCase();
+                
+                stats.totalValor += valor;
+                
+                if (metodo.includes('numerario') || metodo.includes('cash') || metodo.includes('dinheiro')) {
+                    stats.numerario.count++;
+                    stats.numerario.valor += valor;
+                } else if (metodo.includes('multibanco') || metodo.includes('card') || metodo.includes('cartão')) {
+                    stats.multibanco.count++;
+                    stats.multibanco.valor += valor;
+                } else if (metodo.includes('nopay') || metodo.includes('no pay') || metodo.includes('sem pagamento')) {
+                    stats.nopay.count++;
+                    stats.nopay.valor += valor;
+                } else if (metodo.includes('online') || metodo.includes('digital')) {
+                    stats.online.count++;
+                    stats.online.valor += valor;
+                } else {
+                    stats.outros.count++;
+                    stats.outros.valor += valor;
+                }
+            });
+            
+            // Mostrar estatísticas
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${stats.total}</div>
+                    <div class="stat-label">Total Registros</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.totalValor.toFixed(2)} €</div>
+                    <div class="stat-label">Valor Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.numerario.count}</div>
+                    <div class="stat-label">Numerário (${stats.numerario.valor.toFixed(2)} €)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.multibanco.count}</div>
+                    <div class="stat-label">Multibanco (${stats.multibanco.valor.toFixed(2)} €)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.nopay.count}</div>
+                    <div class="stat-label">No Pay (${stats.nopay.valor.toFixed(2)} €)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${stats.online.count}</div>
+                    <div class="stat-label">Online (${stats.online.valor.toFixed(2)} €)</div>
+                </div>
+            `;
+            
+            // Mostrar tabela
+            tableBody.innerHTML = '';
+            caixaData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.matricula}</td>
+                    <td>${item.alocacao}</td>
+                    <td>${item.metodo}</td>
+                    <td>${item.valor.toFixed(2)} €</td>
+                    <td>${item.condutor}</td>
+                    <td>${item.data}</td>
+                    <td class="status-success">${item.status || 'Processado'}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            resultsDiv.classList.remove('hidden');
+            
+            console.log('✅ Resultados da caixa exibidos:', stats);
+        }
+
+        // Mostrar detalhes
+        function showDetails(index) {
+            const item = comparisonData[index];
+            const modal = document.getElementById('details-modal-overlay');
+            const body = document.getElementById('details-modal-body');
+            
+            body.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>Dados Back Office</h4>
+                        <p><strong>Matrícula:</strong> ${item.backoffice ? item.backoffice.matricula : 'N/A'}</p>
+                        <p><strong>Alocação:</strong> ${item.backoffice ? item.backoffice.alocacao : 'N/A'}</p>
+                        <p><strong>Preço:</strong> ${item.precoBO.toFixed(2)} €</p>
+                        <p><strong>Marca:</strong> ${item.backoffice ? item.backoffice.marca : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <h4>Dados Odoo</h4>
+                        <p><strong>Matrícula:</strong> ${item.odoo ? item.odoo.matricula : 'N/A'}</p>
+                        <p><strong>Alocação:</strong> ${item.odoo ? item.odoo.alocacao : 'N/A'}</p>
+                        <p><strong>Preço:</strong> ${item.precoOdoo.toFixed(2)} €</p>
+                        <p><strong>Marca:</strong> ${item.odoo ? item.odoo.marca : 'N/A'}</p>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h4>Análise</h4>
+                    <p><strong>Status:</strong> ${item.status === 'success' ? '✅ Dados consistentes' : 
+                                                 item.status === 'inconsistent' ? '⚠️ Diferença de preço detectada' : 
+                                                 '❌ Registro ausente em um dos sistemas'}</p>
+                    ${item.status === 'inconsistent' ? 
+                        `<p><strong>Diferença:</strong> ${Math.abs(item.precoBO - item.precoOdoo).toFixed(2)} €</p>` : ''}
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        // Atualizar dashboard
+        function updateDashboard() {
+            if (comparisonData.length === 0) return;
+            
+            const totalEntregas = comparisonData.length;
+            const inconsistencias = comparisonData.filter(item => item.status === 'inconsistent').length;
+            const valorTotal = comparisonData.reduce((sum, item) => sum + item.precoBO, 0);
+            const taxaSucesso = ((totalEntregas - inconsistencias) / totalEntregas * 100).toFixed(1);
+            
+            document.getElementById('total-entregas').textContent = totalEntregas;
+            document.getElementById('valor-total').textContent = valorTotal.toFixed(2) + ' €';
+            document.getElementById('total-inconsistencias').textContent = inconsistencias;
+            document.getElementById('taxa-sucesso').textContent = taxaSucesso + '%';
+        }
+
+        // Exportar para Excel
+        function exportToExcel() {
+            if (comparisonData.length === 0 && caixaData.length === 0) {
+                showNotification('Nenhum dado para exportar', 'warning');
+                return;
+            }
+            
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                // Adicionar comparação se existir
+                if (comparisonData.length > 0) {
+                    const wsComparison = XLSX.utils.json_to_sheet(comparisonData.map(item => ({
+                        'Matrícula': item.matricula,
+                        'Alocação': item.alocacao,
+                        'Preço Back Office': item.precoBO,
+                        'Preço Odoo': item.precoOdoo,
+                        'Marca': item.marca,
+                        'Status': item.status,
+                        'Diferença': Math.abs(item.precoBO - item.precoOdoo).toFixed(2)
+                    })));
+                    XLSX.utils.book_append_sheet(wb, wsComparison, 'Comparação');
+                }
+                
+                // Adicionar caixa se existir
+                if (caixaData.length > 0) {
+                    const wsCaixa = XLSX.utils.json_to_sheet(caixaData.map(item => ({
+                        'Matrícula': item.matricula,
+                        'Alocação': item.alocacao,
+                        'Método Pagamento': item.metodo,
+                        'Valor': item.valor,
+                        'Condutor': item.condutor,
+                        'Data': item.data,
+                        'Status': item.status
+                    })));
+                    XLSX.utils.book_append_sheet(wb, wsCaixa, 'Caixa');
+                }
+                
+                const filename = `caixa_multipark_${new Date().toISOString().split('T')[0]}.xlsx`;
+                XLSX.writeFile(wb, filename);
+                
+                showNotification('Ficheiro exportado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao exportar:', error);
+                showNotification('Erro ao exportar ficheiro', 'error');
+            }
+        }
+
+        // Fechar modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Mostrar notificação
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+    </script>
 </body>
 </html>
 
