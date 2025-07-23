@@ -1,121 +1,225 @@
-# Caixa Multipark
+# 🚗 Caixa Multipark
 
-Sistema de gestão e validação de dados para Multipark, integrando informações do Odoo, registos de caixa e entregas do back office.
+Sistema web completo para gestão e validação de caixa de entregas da Multipark, integrando dados do Odoo, registos de caixa e entregas do back office.
 
-## 🚀 Funcionalidades
+## 🚀 **Status do Projeto**
 
-- **Importação de Dados**: Upload e processamento de ficheiros Excel do Odoo, registos de caixa e entregas
-- **Validação Automática**: Sistema de comparação e identificação de discrepâncias
-- **Dashboard Interativo**: Visualização de estatísticas e métricas em tempo real
-- **Autenticação Segura**: Sistema de login integrado com Supabase
-- **Interface Responsiva**: Compatível com desktop e dispositivos móveis
+✅ **TOTALMENTE FUNCIONAL** - Todos os problemas críticos foram corrigidos!
 
-## 🛠️ Tecnologias
+- ✅ Token Supabase configurado e funcional
+- ✅ Sistema de autenticação operacional  
+- ✅ Interface responsiva e moderna
+- ✅ Processamento de ficheiros Excel
+- ✅ Dashboard com estatísticas em tempo real
+- ✅ Sistema de validação robusto
 
-- **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
-- **Backend**: Supabase (PostgreSQL + Auth + Storage)
-- **Deployment**: Vercel
-- **Processamento**: JavaScript para análise de ficheiros Excel
+## 📋 **Funcionalidades**
 
-## 📋 Estrutura do Projeto
+### 🔐 **Autenticação Segura**
+- Sistema de login integrado com Supabase
+- Gestão de sessões e permissões
+- Utilizadores de teste pré-configurados
+
+### 📊 **Importação e Processamento**
+- Upload de ficheiros Excel (Odoo, Back Office, Caixa)
+- Validação automática de dados
+- Processamento em tempo real com feedback visual
+
+### 🔍 **Comparação e Validação**
+- Comparação automática Odoo vs Back Office
+- Identificação de discrepâncias e registos ausentes
+- Sistema de resolução manual de conflitos
+- Validação cruzada com dados de caixa
+
+### 📈 **Dashboard Interativo**
+- Estatísticas em tempo real
+- Gráficos de entregas por método de pagamento
+- Análise por condutor e marca
+- Comparativo entre dados previstos e efetivos
+
+### 📤 **Exportação**
+- Exportação para Excel com dados validados
+- Histórico de exportações
+- Relatórios personalizados
+
+## 🛠️ **Tecnologias**
+
+- **Frontend**: HTML5, CSS3, JavaScript ES6+
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)  
+- **Deployment**: Vercel com CI/CD automático
+- **Processamento**: SheetJS para ficheiros Excel
+- **Gráficos**: Chart.js para visualizações
+- **UI**: Font Awesome + Google Fonts
+
+## 🚀 **Como Usar**
+
+### **1. Acesso**
+```
+URL: https://multipark-caixa.vercel.app
+```
+
+### **2. Login** 
+Utilizadores de teste disponíveis:
+- **admin@multipark.com** / admin123
+- **user@multipark.com** / user123  
+- **manager@multipark.com** / manager123
+
+### **3. Fluxo de Trabalho**
+1. **Importar** ficheiros Excel (Odoo + Back Office)
+2. **Comparar** dados e resolver discrepâncias
+3. **Validar** com ficheiro de caixa
+4. **Analisar** resultados no dashboard
+5. **Exportar** relatório final
+
+## 📁 **Estrutura do Projeto**
 
 ```
 caixa-multipark/
-├── index.html              # Página principal da aplicação
-├── login.html              # Página de autenticação
+├── index.html              # Aplicação principal
+├── login.html              # Página de autenticação  
 ├── css/
 │   ├── styles.css          # Estilos principais
-│   └── additional-styles.css # Estilos adicionais
+│   └── additional-styles.css # Estilos complementares
 ├── js/
+│   ├── config.js           # Configurações globais
+│   ├── error-handler.js    # Sistema de erros
+│   ├── supabase-integration.js # API Supabase
 │   ├── app.js              # Aplicação principal
-│   ├── supabase-integration.js # Integração com Supabase
-│   ├── file-processor.js   # Processamento de ficheiros
-│   ├── validation-system.js # Sistema de validação
-│   ├── dashboard.js        # Dashboard e estatísticas
-│   └── notifications.js    # Sistema de notificações
-├── uploads/                # Ficheiros de teste
-└── docs/                   # Documentação
+│   ├── file-processor.js   # Processamento Excel
+│   ├── validation-system.js # Sistema validação
+│   ├── dashboard.js        # Dashboard e gráficos
+│   └── notifications.js    # Sistema notificações
+├── uploads/                # Ficheiros de exemplo
+├── docs/                   # Documentação
+├── package.json            # Configuração NPM
+├── vercel.json            # Configuração deployment
+└── README.md              # Este ficheiro
 ```
 
-## 🔧 Configuração
+## 🔧 **Configuração Local**
 
-### Variáveis de Ambiente
+### **Pré-requisitos**
+- Node.js 16+ 
+- NPM ou Yarn
 
-Crie um ficheiro `.env` ou configure as seguintes variáveis:
+### **Instalação**
+```bash
+# Clonar repositório
+git clone https://github.com/JorgeTabuada/multipark-caixa.git
+cd multipark-caixa
+
+# Instalar dependências
+npm install
+
+# Servir localmente  
+npm run dev
+# ou
+npm start
+```
+
+### **Variáveis de Ambiente**
+O projeto está configurado para funcionar imediatamente. Para ambientes personalizados:
 
 ```javascript
-const SUPABASE_URL = 'https://uvcmgzhwiibjcygqsjrm.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+// js/supabase-integration.js
+const SUPABASE_URL = 'your_supabase_url';
+const SUPABASE_ANON_KEY = 'your_anon_key';
 ```
 
-### Base de Dados
+## 🗄️ **Base de Dados**
 
-O projeto utiliza as seguintes tabelas no Supabase:
-
+### **Tabelas Supabase**
 - `users` - Gestão de utilizadores
-- `import_batches` - Controlo de importações
+- `import_batches` - Controlo de importações  
 - `sales_orders` - Dados do Odoo
-- `cash_records` - Registos de caixa
 - `deliveries` - Entregas do back office
-- `comparisons` - Comparações e discrepâncias
-- `validations` - Sistema de validação
+- `cash_records` - Registos de caixa
+- `comparisons` - Resultados de comparação
+- `validations` - Validações manuais
+- `exports` - Histórico de exportações
 
-## 🚀 Deployment
+### **Row Level Security (RLS)**
+- Todas as tabelas têm RLS ativado
+- Utilizadores só acedem aos seus dados
+- Logs de auditoria para todas as operações
 
-### Vercel
+## 📊 **Tipos de Ficheiro Suportados**
 
-1. Conecte o repositório ao Vercel
-2. Configure as variáveis de ambiente
-3. Deploy automático a cada push
+### **Excel (.xlsx, .xls)**
+- **Odoo Sales Orders**: Encomendas e preços de reserva
+- **Back Office Deliveries**: Entregas e alocações  
+- **Caixa Records**: Registos de pagamentos
 
-### Local
+### **Formato Esperado**
+Ficheiros devem conter colunas padrão:
+- Matrícula, Preço, Marca, Condutor, Método Pagamento, etc.
 
-1. Clone o repositório
-2. Abra `index.html` num servidor local
-3. Configure as credenciais do Supabase
-
-## 📊 Fluxo de Trabalho
-
-1. **Login**: Autenticação via Supabase
-2. **Import**: Upload de ficheiros Excel (Odoo, Caixa, Entregas)
-3. **Process**: Processamento automático e validação
-4. **Compare**: Identificação de discrepâncias
-5. **Validate**: Resolução manual de conflitos
-6. **Dashboard**: Visualização de resultados
-
-## 🔐 Segurança
+## 🔐 **Segurança**
 
 - Autenticação obrigatória para todas as operações
-- Row Level Security (RLS) ativado em todas as tabelas
+- Tokens JWT para sessões seguras
 - Validação de dados no frontend e backend
-- Logs de auditoria para todas as ações
+- Proteção contra XSS e CSRF
+- Headers de segurança configurados
 
-## 📱 Compatibilidade
+## 📱 **Compatibilidade**
 
+### **Browsers Suportados**
 - ✅ Chrome 90+
-- ✅ Firefox 88+
+- ✅ Firefox 88+  
 - ✅ Safari 14+
 - ✅ Edge 90+
-- ✅ Dispositivos móveis (iOS/Android)
 
-## 🤝 Contribuição
+### **Dispositivos**
+- ✅ Desktop (recomendado)
+- ✅ Tablet 
+- ✅ Mobile (funcional)
 
-1. Fork o projeto
-2. Crie uma branch para a sua feature
-3. Commit as suas alterações
-4. Push para a branch
-5. Abra um Pull Request
+## 🐛 **Resolução de Problemas**
 
-## 📄 Licença
+### **Erro de Login**
+- Verificar credenciais
+- Limpar cache do browser
+- Verificar conexão à internet
 
-Este projeto é propriedade da Multipark. Todos os direitos reservados.
+### **Erro de Upload**
+- Ficheiro deve ser .xlsx ou .xls
+- Tamanho máximo: 10MB
+- Verificar formato das colunas
 
-## 📞 Suporte
+### **Dados não Aparecem**
+- Aguardar processamento
+- Refrescar página (F5)
+- Verificar console para erros
 
-Para suporte técnico, contacte: jorgetabuada@airpark.pt
+## 📞 **Suporte**
+
+- **Email**: jorgetabuada@airpark.pt
+- **Empresa**: Multipark
+- **Issues**: [GitHub Issues](https://github.com/JorgeTabuada/multipark-caixa/issues)
+
+## 📄 **Licença**
+
+Este projeto é propriedade da **Multipark**. Todos os direitos reservados.
+
+## 🏆 **Créditos**
+
+- **Desenvolvimento**: Jorge Tabuada
+- **Design**: Multipark Team  
+- **QA**: Multipark Operations
+
+## 📈 **Changelog**
+
+### **v1.0.0** - 23/07/2025
+- ✅ Sistema completo funcional
+- ✅ Correção de token Supabase  
+- ✅ Interface moderna e responsiva
+- ✅ Sistema de erros robusto
+- ✅ Dashboard com estatísticas
+- ✅ Deployment automático no Vercel
 
 ---
 
-**Versão**: 1.0.0  
-**Última atualização**: Janeiro 2025
+**🚀 Projeto pronto para produção!** 
 
+Para começar a usar, acede a: **https://multipark-caixa.vercel.app**
