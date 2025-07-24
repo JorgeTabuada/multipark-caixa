@@ -1,455 +1,465 @@
 // exporter-fixed.js - Sistema de exportação corrigido
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📊 Carregando exportador corrigido...');
-    
-    // Verificar dependência XLSX
-    if (typeof XLSX === 'undefined') {
-        console.error('❌ XLSX library não encontrada!');
-        if (window.showNotification) {
-            window.showNotification('Erro: Biblioteca XLSX não carregada!', 'error');
-        }
-        return;
-    }
-    
-    const exportExcelBtn = document.getElementById('export-btn');
-    
-    // Variáveis para dados
-    let exportData = [];
-    let dashboardStats = {};
-    let isExporting = false;
+    console.log('📊 Carregando sistema de exportação corrigido...');
 
-    /**
-     * CORREÇÃO: Definir dados para exportação
-     */
-    function setExportData(data, stats) {
-        console.log('📝 Definindo dados para exportação:', {
-            entregas: data?.length || 0,
-            stats: !!stats
-        });
-        
-        exportData = data || [];
-        dashboardStats = stats || {};
-        
-        // Habilitar/desabilitar botão
-        if (exportExcelBtn) {
-            exportExcelBtn.disabled = exportData.length === 0;
-            
-            if (exportData.length === 0) {
-                exportExcelBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Sem dados para exportar';
-            } else {
-                exportExcelBtn.innerHTML = `<i class="fas fa-download"></i> Exportar ${exportData.length} entregas`;
-            }
-        }
-    }
+    // Elementos da interface
+    const exportBtn = document.getElementById('export-btn');
+    const exportProgress = document.getElementById('export-progress');
+    const exportStatus = document.getElementById('export-status');
 
     /**
      * CORREÇÃO: Função principal de exportação
      */
-    async function exportToExcel() {
-        if (isExporting) {
-            console.log('⏳ Exportação já em andamento...');
-            return;
-        }
-        
-        if (!exportData || exportData.length === 0) {
-            if (window.showNotification) {
-                window.showNotification('Não há dados para exportar. Processa primeiro os ficheiros.', 'warning');
-            }
-            return;
-        }
-        
+    function exportToExcel() {
+        console.log('📊 Iniciando exportação para Excel...');
+
         try {
-            isExporting = true;
-            console.log('🚀 Iniciando exportação para Excel...');
-            
-            // Atualizar botão
-            if (exportExcelBtn) {
-                exportExcelBtn.disabled = true;
-                exportExcelBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A exportar...';
+            // Verificar se SheetJS está disponível
+            if (typeof XLSX === 'undefined') {
+                throw new Error('Biblioteca SheetJS não está carregada');
             }
-            
-            // Mostrar notificação de início
-            if (window.showNotification) {
-                window.showNotification('Iniciando exportação...', 'info', 2000);
+
+            // Mostrar progresso
+            if (exportProgress) {
+                exportProgress.classList.remove('hidden');
+                exportProgress.style.width = '0%';
             }
+
+            updateExportStatus('Coletando dados...', 10);
+
+            // CORREÇÃO: Coletar todos os dados disponíveis
+            const allData = collectAllData();
             
-            // Criar workbook
-            const wb = XLSX.utils.book_new();
-            
-            // Criar planilhas
-            console.log('📋 A criar planilha de entregas...');
-            const entregasSheet = createEntregasSheet();
-            XLSX.utils.book_append_sheet(wb, entregasSheet, "Entregas Validadas");
-            
-            console.log('📋 A criar planilha de estatísticas...');
-            const statsSheet = createStatsSheet();
-            XLSX.utils.book_append_sheet(wb, statsSheet, "Estatísticas");
-            
-            console.log('📋 A criar planilha de inconsistências...');
-            const inconsistenciesSheet = createInconsistenciesSheet();
-            XLSX.utils.book_append_sheet(wb, inconsistenciesSheet, "Inconsistências");
-            
-            console.log('📋 A criar planilha por condutor...');
-            const driversSheet = createDriversSheet();
-            XLSX.utils.book_append_sheet(wb, driversSheet, "Por Condutor");
-            
-            // Gerar nome do arquivo
-            const date = new Date();
-            const dateStr = date.toLocaleDateString('pt-PT').replace(/\//g, '-');
-            const timeStr = date.toLocaleTimeString('pt-PT').replace(/:/g, '-');
-            const fileName = `Caixa_Multipark_${dateStr}_${timeStr}.xlsx`;
-            
-            // Exportar arquivo
-            console.log('💾 A guardar ficheiro:', fileName);
-            XLSX.writeFile(wb, fileName);
-            
-            console.log('✅ Exportação concluída!');
-            
+            if (!allData || Object.keys(allData).length === 0) {
+                throw new Error('Nenhum dado disponível para exportação');
+            }
+
+            updateExportStatus('Preparando planilhas...', 30);
+
+            // CORREÇÃO: Criar workbook com múltiplas abas
+            const workbook = XLSX.utils.book_new();
+
+            // Aba 1: Resumo Geral
+            if (allData.summary && allData.summary.length > 0) {
+                const summarySheet = XLSX.utils.json_to_sheet(allData.summary);
+                XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumo');
+                console.log('✅ Aba "Resumo" criada com', allData.summary.length, 'registros');
+            }
+
+            updateExportStatus('Processando comparações...', 50);
+
+            // Aba 2: Comparações Odoo vs Back Office
+            if (allData.comparisons && allData.comparisons.length > 0) {
+                const comparisonsSheet = XLSX.utils.json_to_sheet(allData.comparisons);
+                XLSX.utils.book_append_sheet(workbook, comparisonsSheet, 'Comparações');
+                console.log('✅ Aba "Comparações" criada com', allData.comparisons.length, 'registros');
+            }
+
+            updateExportStatus('Processando validações...', 70);
+
+            // Aba 3: Entregas Validadas
+            if (allData.validatedDeliveries && allData.validatedDeliveries.length > 0) {
+                const validatedSheet = XLSX.utils.json_to_sheet(allData.validatedDeliveries);
+                XLSX.utils.book_append_sheet(workbook, validatedSheet, 'Entregas Validadas');
+                console.log('✅ Aba "Entregas Validadas" criada com', allData.validatedDeliveries.length, 'registros');
+            }
+
+            updateExportStatus('Processando inconsistências...', 85);
+
+            // Aba 4: Inconsistências
+            if (allData.inconsistencies && allData.inconsistencies.length > 0) {
+                const inconsistenciesSheet = XLSX.utils.json_to_sheet(allData.inconsistencies);
+                XLSX.utils.book_append_sheet(workbook, inconsistenciesSheet, 'Inconsistências');
+                console.log('✅ Aba "Inconsistências" criada com', allData.inconsistencies.length, 'registros');
+            }
+
+            updateExportStatus('Finalizando exportação...', 95);
+
+            // CORREÇÃO: Gerar nome de arquivo com timestamp
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 19).replace(/[T:]/g, '-');
+            const filename = `Caixa_Multipark_${timestamp}.xlsx`;
+
+            // CORREÇÃO: Exportar arquivo
+            XLSX.writeFile(workbook, filename);
+
+            updateExportStatus('Exportação concluída!', 100);
+
             // Mostrar notificação de sucesso
             if (window.showNotification) {
-                window.showNotification(`Ficheiro exportado: ${fileName}`, 'success', 5000);
+                window.showNotification(`Arquivo exportado: ${filename}`, 'success', 5000);
             }
-            
+
+            // CORREÇÃO: Registrar exportação no histórico
+            registerExport(filename, allData);
+
+            console.log('✅ Exportação concluída:', filename);
+
         } catch (error) {
-            console.error('❌ Erro durante a exportação:', error);
+            console.error('❌ Erro na exportação:', error);
+            updateExportStatus(`Erro: ${error.message}`, 0);
             
             if (window.showNotification) {
-                window.showNotification('Erro ao exportar: ' + error.message, 'error');
-            } else {
-                alert('Erro ao exportar ficheiro: ' + error.message);
+                window.showNotification(`Erro na exportação: ${error.message}`, 'error');
             }
         } finally {
-            isExporting = false;
-            
-            // Restaurar botão
-            if (exportExcelBtn) {
-                exportExcelBtn.disabled = exportData.length === 0;
-                exportExcelBtn.innerHTML = exportData.length === 0 ? 
-                    '<i class="fas fa-exclamation-triangle"></i> Sem dados' : 
-                    '<i class="fas fa-download"></i> Exportar para Excel';
-            }
-        }
-    }
-
-    /**
-     * CORREÇÃO: Criar planilha de entregas
-     */
-    function createEntregasSheet() {
-        console.log('📝 A processar entregas para exportação...');
-        
-        const sheetData = exportData.map(delivery => {
-            const inconsistencias = getInconsistenciasTexto(delivery);
-            const isValidated = delivery.status === 'validated' || delivery.resolution;
-            
-            return {
-                "Alocação": delivery.alocation || 'N/A',
-                "Matrícula": delivery.licensePlate,
-                "Data Checkout": delivery.checkOut || 'N/A',
-                "Marca": delivery.parkBrand || 'N/A',
-                "Método Pagamento": delivery.paymentMethod,
-                "Valor na Entrega": parseFloat(delivery.priceOnDelivery) || 0,
-                "Booking Price (BO)": delivery.validatedRecord?.bookingPriceBO || 'N/A',
-                "Booking Price (Odoo)": delivery.validatedRecord?.bookingPriceOdoo || 'N/A',
-                "Campanha": delivery.campaign || 'N/A',
-                "Tipo Campanha": delivery.campaignPay || 'N/A',
-                "Condutor": delivery.condutorEntrega || 'N/A',
-                "Status": getStatusText(delivery),
-                "Validado": isValidated ? 'Sim' : 'Não',
-                "Inconsistências": inconsistencias,
-                "Resolução": getResolutionText(delivery.resolution) || 'N/A',
-                "Observações": delivery.resolutionNotes || delivery.userNotes || '',
-                "Alterações": delivery.resolution === 'corrected' ? getAlteracoes(delivery) : 'N/A',
-                "Inconsistência Permanente": delivery.permanentInconsistency ? 'Sim' : 'Não'
-            };
-        });
-        
-        // Criar planilha
-        const ws = XLSX.utils.json_to_sheet(sheetData);
-        
-        // Definir larguras de coluna
-        ws['!cols'] = [
-            { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 18 },
-            { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
-            { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 30 }, { wch: 15 },
-            { wch: 30 }, { wch: 40 }, { wch: 20 }
-        ];
-        
-        // CORREÇÃO: Aplicar formatação condicional
-        addConditionalFormatting(ws, sheetData);
-        
-        return ws;
-    }
-
-    /**
-     * CORREÇÃO: Criar planilha de estatísticas
-     */
-    function createStatsSheet() {
-        const statsData = [];
-        
-        // Estatísticas gerais
-        statsData.push({ "Categoria": "=== ESTATÍSTICAS GERAIS ===", "Valor": "" });
-        statsData.push({ "Categoria": "Total da Caixa", "Valor": dashboardStats.totalCaixa || 0 });
-        statsData.push({ "Categoria": "Total em Numerário", "Valor": dashboardStats.totalNumerario || 0 });
-        statsData.push({ "Categoria": "Total em Multibanco", "Valor": dashboardStats.totalMultibanco || 0 });
-        statsData.push({ "Categoria": "Total No Pay", "Valor": dashboardStats.totalNopay || 0 });
-        statsData.push({ "Categoria": "Total Online", "Valor": dashboardStats.totalOnline || 0 });
-        statsData.push({ "Categoria": "", "Valor": "" });
-        
-        // Contagens
-        statsData.push({ "Categoria": "=== CONTAGENS ===", "Valor": "" });
-        statsData.push({ "Categoria": "Entregas Numerário", "Valor": dashboardStats.countNumerario || 0 });
-        statsData.push({ "Categoria": "Entregas Multibanco", "Valor": dashboardStats.countMultibanco || 0 });
-        statsData.push({ "Categoria": "Entregas No Pay", "Valor": dashboardStats.countNopay || 0 });
-        statsData.push({ "Categoria": "Entregas Online", "Valor": dashboardStats.countOnline || 0 });
-        statsData.push({ "Categoria": "Total de Entregas", "Valor": dashboardStats.countTotal || 0 });
-        statsData.push({ "Categoria": "", "Valor": "" });
-        
-        // Performance
-        statsData.push({ "Categoria": "=== PERFORMANCE ===", "Valor": "" });
-        statsData.push({ "Categoria": "Entregas Efetuadas", "Valor": dashboardStats.entregasEfetuadas || 0 });
-        statsData.push({ "Categoria": "Entregas Previstas", "Valor": dashboardStats.entregasPrevistas || 0 });
-        
-        const percentual = dashboardStats.entregasPrevistas > 0 
-            ? (dashboardStats.entregasEfetuadas / dashboardStats.entregasPrevistas * 100).toFixed(1) 
-            : 0;
-        statsData.push({ "Categoria": "Percentual de Conclusão", "Valor": percentual + '%' });
-        
-        const ws = XLSX.utils.json_to_sheet(statsData);
-        ws['!cols'] = [{ wch: 30 }, { wch: 20 }];
-        
-        return ws;
-    }
-
-    /**
-     * CORREÇÃO: Criar planilha de inconsistências
-     */
-    function createInconsistenciesSheet() {
-        const inconsistentDeliveries = exportData.filter(delivery => 
-            delivery.status === 'inconsistent' || 
-            delivery.permanentInconsistency ||
-            (delivery.inconsistencies && delivery.inconsistencies.length > 0) ||
-            (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0)
-        );
-        
-        if (inconsistentDeliveries.length === 0) {
-            const emptyData = [{ "Mensagem": "Não há inconsistências registadas." }];
-            return XLSX.utils.json_to_sheet(emptyData);
-        }
-        
-        const sheetData = inconsistentDeliveries.map(delivery => ({
-            "Matrícula": delivery.licensePlate,
-            "Condutor": delivery.condutorEntrega,
-            "Método Pagamento": delivery.paymentMethod,
-            "Valor Entrega": delivery.priceOnDelivery,
-            "Inconsistências": getInconsistenciasTexto(delivery),
-            "Permanente": delivery.permanentInconsistency ? 'Sim' : 'Não',
-            "Status": getStatusText(delivery),
-            "Resolução": getResolutionText(delivery.resolution) || 'Pendente'
-        }));
-        
-        const ws = XLSX.utils.json_to_sheet(sheetData);
-        ws['!cols'] = [{ wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 15 }, { wch: 40 }, { wch: 12 }, { wch: 15 }, { wch: 15 }];
-        
-        return ws;
-    }
-
-    /**
-     * CORREÇÃO: Criar planilha por condutor
-     */
-    function createDriversSheet() {
-        if (!dashboardStats.byDriver || Object.keys(dashboardStats.byDriver).length === 0) {
-            const emptyData = [{ "Mensagem": "Não há estatísticas por condutor disponíveis." }];
-            return XLSX.utils.json_to_sheet(emptyData);
-        }
-        
-        const sheetData = [];
-        
-        // Cabeçalho
-        sheetData.push({
-            "Condutor": "=== ESTATÍSTICAS POR CONDUTOR ===",
-            "Total Entregas": "",
-            "Total Valor": "",
-            "Numerário": "",
-            "Multibanco": "",
-            "No Pay": "",
-            "Online": ""
-        });
-        sheetData.push({
-            "Condutor": "",
-            "Total Entregas": "",
-            "Total Valor": "",
-            "Numerário": "",
-            "Multibanco": "",
-            "No Pay": "",
-            "Online": ""
-        });
-        
-        // Dados por condutor
-        Object.entries(dashboardStats.byDriver).forEach(([driver, data]) => {
-            sheetData.push({
-                "Condutor": driver,
-                "Total Entregas": data.count || 0,
-                "Total Valor": data.total || 0,
-                "Numerário": `${data.numerario?.count || 0} (${(data.numerario?.total || 0).toFixed(2)}€)`,
-                "Multibanco": `${data.multibanco?.count || 0} (${(data.multibanco?.total || 0).toFixed(2)}€)`,
-                "No Pay": `${data.nopay?.count || 0} (${(data.nopay?.total || 0).toFixed(2)}€)`,
-                "Online": `${data.online?.count || 0} (${(data.online?.total || 0).toFixed(2)}€)`
-            });
-        });
-        
-        const ws = XLSX.utils.json_to_sheet(sheetData);
-        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
-        
-        return ws;
-    }
-
-    /**
-     * CORREÇÃO: Aplicar formatação condicional
-     */
-    function addConditionalFormatting(ws, data) {
-        for (let i = 0; i < data.length; i++) {
-            const rowIndex = i + 2; // +1 para header, +1 para 1-based
-            const delivery = exportData[i];
-            
-            if (!delivery) continue;
-            
-            let fillColor = 'FFFFFF'; // Branco padrão
-            
-            if (delivery.permanentInconsistency) {
-                fillColor = 'FFE6E6'; // Vermelho claro
-            } else if (delivery.status === 'inconsistent') {
-                fillColor = 'FFF2CC'; // Amarelo claro
-            } else if (delivery.status === 'validated' || delivery.resolution) {
-                fillColor = 'E6F7E6'; // Verde claro
-            }
-            
-            // Aplicar cor a toda a linha
-            for (let col = 0; col < 18; col++) {
-                const cellRef = XLSX.utils.encode_cell({ r: rowIndex - 1, c: col });
-                if (!ws[cellRef]) continue;
-                
-                if (!ws[cellRef].s) ws[cellRef].s = {};
-                ws[cellRef].s.fill = { fgColor: { rgb: fillColor } };
-            }
-        }
-    }
-
-    /**
-     * CORREÇÃO: Funções auxiliares melhoradas
-     */
-    function getInconsistenciasTexto(delivery) {
-        const inconsistencias = [];
-        
-        // Inconsistências permanentes
-        if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
-            delivery.permanentInconsistencies.forEach(error => {
-                inconsistencias.push(error.message || error.code || error);
-            });
-        }
-        
-        // Inconsistências normais
-        if (delivery.inconsistencies && delivery.inconsistencies.length > 0) {
-            delivery.inconsistencies.forEach(inc => {
-                if (inc === 'bookingPriceBO') {
-                    inconsistencias.push(`Preço diferente do BO (${delivery.priceOnDelivery}€ vs ${delivery.validatedRecord?.bookingPriceBO}€)`);
-                } else if (inc === 'bookingPriceOdoo') {
-                    inconsistencias.push(`Preço diferente do Odoo (${delivery.priceOnDelivery}€ vs ${delivery.validatedRecord?.bookingPriceOdoo}€)`);
-                } else if (inc === 'missing_record') {
-                    inconsistencias.push('Registro não encontrado na comparação');
-                } else {
-                    inconsistencias.push(inc);
+            // Ocultar progresso após 3 segundos
+            setTimeout(() => {
+                if (exportProgress) {
+                    exportProgress.classList.add('hidden');
                 }
-            });
+            }, 3000);
         }
-        
-        return inconsistencias.join('; ');
     }
 
-    function getStatusText(delivery) {
-        if (delivery.permanentInconsistency) {
-            return 'Inconsistência Permanente';
+    /**
+     * CORREÇÃO: Coletar todos os dados disponíveis
+     */
+    function collectAllData() {
+        console.log('📂 Coletando dados de todos os módulos...');
+
+        const data = {};
+
+        // Dados do comparador
+        if (window.comparator && window.comparator.getResults) {
+            const comparisonResults = window.comparator.getResults();
+            
+            if (comparisonResults.all && comparisonResults.all.length > 0) {
+                data.comparisons = comparisonResults.all.map(formatComparisonForExport);
+                data.inconsistencies = comparisonResults.inconsistent.map(formatInconsistencyForExport);
+            }
+        }
+
+        // Dados do validador
+        if (window.validator) {
+            const validatedDeliveries = window.validator.getValidatedDeliveries ? 
+                window.validator.getValidatedDeliveries() : [];
+            const pendingDeliveries = window.validator.getPendingDeliveries ? 
+                window.validator.getPendingDeliveries() : [];
+
+            if (validatedDeliveries.length > 0) {
+                data.validatedDeliveries = validatedDeliveries.map(formatDeliveryForExport);
+            }
+
+            // Adicionar entregas pendentes às inconsistências se existirem
+            const pendingInconsistent = pendingDeliveries.filter(d => 
+                d.status === 'inconsistent' || d.permanentInconsistencies
+            );
+            
+            if (pendingInconsistent.length > 0) {
+                if (!data.inconsistencies) data.inconsistencies = [];
+                data.inconsistencies.push(...pendingInconsistent.map(formatDeliveryInconsistencyForExport));
+            }
+        }
+
+        // Dados do dashboard
+        if (window.dashboard && window.dashboard.getStats) {
+            const stats = window.dashboard.getStats();
+            if (stats) {
+                data.summary = formatSummaryForExport(stats);
+            }
+        }
+
+        // CORREÇÃO: Se não há dados do dashboard, criar resumo básico
+        if (!data.summary) {
+            data.summary = createBasicSummary(data);
+        }
+
+        console.log('📊 Dados coletados:', {
+            summary: data.summary?.length || 0,
+            comparisons: data.comparisons?.length || 0,
+            validatedDeliveries: data.validatedDeliveries?.length || 0,
+            inconsistencies: data.inconsistencies?.length || 0
+        });
+
+        return data;
+    }
+
+    /**
+     * CORREÇÃO: Formatar comparação para exportação
+     */
+    function formatComparisonForExport(comparison) {
+        return {
+            'Matrícula': comparison.licensePlate,
+            'Status': getStatusText(comparison.status),
+            'Preço Odoo': comparison.odooRecord?.bookingPrice || 'N/A',
+            'Preço Back Office': comparison.boRecord?.bookingPrice || 'N/A',
+            'Marca Odoo': comparison.odooRecord?.parkBrand || 'N/A',
+            'Marca Back Office': comparison.boRecord?.parkBrand || 'N/A',
+            'Condutor Odoo': comparison.odooRecord?.condutorEntrega || 'N/A',
+            'Condutor Back Office': comparison.boRecord?.condutorEntrega || 'N/A',
+            'Data Checkout Odoo': comparison.odooRecord?.checkOut ? 
+                (window.DateUtils ? window.DateUtils.formatForDisplay(comparison.odooRecord.checkOut) : comparison.odooRecord.checkOut) : 'N/A',
+            'Data Checkout Back Office': comparison.boRecord?.checkOut ? 
+                (window.DateUtils ? window.DateUtils.formatForDisplay(comparison.boRecord.checkOut) : comparison.boRecord.checkOut) : 'N/A',
+            'Inconsistências': comparison.inconsistencies.join(', ') || 'Nenhuma',
+            'Data Comparação': new Date().toLocaleString('pt-PT')
+        };
+    }
+
+    /**
+     * CORREÇÃO: Formatar inconsistência para exportação
+     */
+    function formatInconsistencyForExport(inconsistency) {
+        return {
+            'Matrícula': inconsistency.licensePlate,
+            'Tipo': getStatusText(inconsistency.status),
+            'Problemas': inconsistency.inconsistencies.join(', '),
+            'Preço Odoo': inconsistency.odooRecord?.bookingPrice || 'N/A',
+            'Preço Back Office': inconsistency.boRecord?.bookingPrice || 'N/A',
+            'Diferença Preço': inconsistency.odooRecord && inconsistency.boRecord ? 
+                (parseFloat(inconsistency.odooRecord.bookingPrice || 0) - parseFloat(inconsistency.boRecord.bookingPrice || 0)).toFixed(2) + ' €' : 'N/A',
+            'Marca Odoo': inconsistency.odooRecord?.parkBrand || 'N/A',
+            'Marca Back Office': inconsistency.boRecord?.parkBrand || 'N/A',
+            'Requer Atenção': inconsistency.status === 'missing' ? 'SIM' : 'Verificar',
+            'Data Identificação': new Date().toLocaleString('pt-PT')
+        };
+    }
+
+    /**
+     * CORREÇÃO: Formatar entrega para exportação
+     */
+    function formatDeliveryForExport(delivery) {
+        return {
+            'Matrícula': delivery.licensePlate,
+            'Alocação': delivery.alocation || 'N/A',
+            'Data Checkout': delivery.checkOut,
+            'Método Pagamento': delivery.paymentMethod,
+            'Valor Entrega': delivery.priceOnDelivery + ' €',
+            'Condutor': delivery.condutorEntrega,
+            'Marca': delivery.parkBrand || 'N/A',
+            'Campanha': delivery.campaign || 'N/A',
+            'Tipo Campanha': delivery.campaignPay || 'N/A',
+            'Status': getStatusText(delivery.status),
+            'Resolução': delivery.resolution || 'N/A',
+            'Notas': delivery.resolutionNotes || delivery.userNotes || 'N/A',
+            'Inconsistências Permanentes': delivery.permanentInconsistencies ? 
+                delivery.permanentInconsistencies.join(', ') : 'Nenhuma',
+            'Data Validação': new Date().toLocaleString('pt-PT')
+        };
+    }
+
+    /**
+     * CORREÇÃO: Formatar inconsistência de entrega para exportação
+     */
+    function formatDeliveryInconsistencyForExport(delivery) {
+        return {
+            'Matrícula': delivery.licensePlate,
+            'Condutor': delivery.condutorEntrega,
+            'Valor Entrega': delivery.priceOnDelivery + ' €',
+            'Método Pagamento': delivery.paymentMethod,
+            'Tipo Inconsistência': delivery.permanentInconsistencies ? 'Permanente' : 'Temporária',
+            'Problemas': [
+                ...(delivery.inconsistencies || []),
+                ...(delivery.permanentInconsistencies || [])
+            ].join(', '),
+            'Status': getStatusText(delivery.status),
+            'Requer Correção': delivery.permanentInconsistencies ? 'NÃO (Permanente)' : 'SIM',
+            'Data Identificação': new Date().toLocaleString('pt-PT')
+        };
+    }
+
+    /**
+     * CORREÇÃO: Formatar resumo para exportação
+     */
+    function formatSummaryForExport(stats) {
+        return [
+            {
+                'Métrica': 'Total de Entregas',
+                'Valor': stats.totalDeliveries || 0,
+                'Descrição': 'Número total de entregas processadas'
+            },
+            {
+                'Métrica': 'Entregas Validadas',
+                'Valor': stats.validatedDeliveries || 0,
+                'Descrição': 'Entregas que passaram na validação'
+            },
+            {
+                'Métrica': 'Inconsistências Encontradas',
+                'Valor': stats.inconsistencies || 0,
+                'Descrição': 'Registros com problemas identificados'
+            },
+            {
+                'Métrica': 'Valor Total',
+                'Valor': (stats.totalValue || 0) + ' €',
+                'Descrição': 'Soma de todos os valores de entrega'
+            },
+            {
+                'Métrica': 'Condutores Únicos',
+                'Valor': stats.uniqueDrivers || 0,
+                'Descrição': 'Número de condutores diferentes'
+            },
+            {
+                'Métrica': 'Marcas Únicas',
+                'Valor': stats.uniqueBrands || 0,
+                'Descrição': 'Número de marcas diferentes'
+            },
+            {
+                'Métrica': 'Data Processamento',
+                'Valor': new Date().toLocaleString('pt-PT'),
+                'Descrição': 'Quando este relatório foi gerado'
+            }
+        ];
+    }
+
+    /**
+     * CORREÇÃO: Criar resumo básico quando dashboard não está disponível
+     */
+    function createBasicSummary(data) {
+        const summary = [];
+
+        if (data.comparisons) {
+            summary.push({
+                'Métrica': 'Total Comparações',
+                'Valor': data.comparisons.length,
+                'Descrição': 'Registros comparados entre Odoo e Back Office'
+            });
+        }
+
+        if (data.validatedDeliveries) {
+            summary.push({
+                'Métrica': 'Entregas Validadas',
+                'Valor': data.validatedDeliveries.length,
+                'Descrição': 'Entregas que passaram na validação de caixa'
+            });
+
+            const totalValue = data.validatedDeliveries.reduce((sum, delivery) => {
+                const value = parseFloat(delivery['Valor Entrega']?.replace(' €', '') || 0);
+                return sum + value;
+            }, 0);
+
+            summary.push({
+                'Métrica': 'Valor Total Validado',
+                'Valor': totalValue.toFixed(2) + ' €',
+                'Descrição': 'Soma dos valores das entregas validadas'
+            });
+        }
+
+        if (data.inconsistencies) {
+            summary.push({
+                'Métrica': 'Inconsistências',
+                'Valor': data.inconsistencies.length,
+                'Descrição': 'Registros com problemas identificados'
+            });
+        }
+
+        summary.push({
+            'Métrica': 'Data Exportação',
+            'Valor': new Date().toLocaleString('pt-PT'),
+            'Descrição': 'Quando este relatório foi exportado'
+        });
+
+        return summary;
+    }
+
+    /**
+     * CORREÇÃO: Registrar exportação no histórico
+     */
+    function registerExport(filename, data) {
+        try {
+            const exportRecord = {
+                filename: filename,
+                timestamp: new Date().toISOString(),
+                recordCount: {
+                    summary: data.summary?.length || 0,
+                    comparisons: data.comparisons?.length || 0,
+                    validatedDeliveries: data.validatedDeliveries?.length || 0,
+                    inconsistencies: data.inconsistencies?.length || 0
+                },
+                totalRecords: Object.values(data).reduce((sum, arr) => 
+                    sum + (Array.isArray(arr) ? arr.length : 0), 0
+                )
+            };
+
+            // Guardar no localStorage
+            let exportHistory = JSON.parse(localStorage.getItem('caixa_export_history') || '[]');
+            exportHistory.unshift(exportRecord); // Adicionar no início
+            
+            // Manter apenas os últimos 10 registros
+            if (exportHistory.length > 10) {
+                exportHistory = exportHistory.slice(0, 10);
+            }
+            
+            localStorage.setItem('caixa_export_history', JSON.stringify(exportHistory));
+            
+            console.log('✅ Exportação registrada no histórico');
+
+        } catch (error) {
+            console.warn('⚠️ Erro ao registrar exportação:', error);
+        }
+    }
+
+    /**
+     * Atualizar status da exportação
+     */
+    function updateExportStatus(message, progress) {
+        if (exportStatus) {
+            exportStatus.textContent = message;
         }
         
-        switch (delivery.status) {
+        if (exportProgress && progress !== undefined) {
+            exportProgress.style.width = progress + '%';
+        }
+        
+        console.log(`📊 Exportação: ${message} (${progress || 0}%)`);
+    }
+
+    /**
+     * Função auxiliar para texto de status
+     */
+    function getStatusText(status) {
+        switch (status) {
+            case 'valid': return 'Válido';
             case 'validated': return 'Validado';
             case 'inconsistent': return 'Inconsistente';
-            case 'ready': return 'Pronto';
+            case 'missing': return 'Em Falta';
             case 'pending': return 'Pendente';
-            default: return delivery.status || 'N/A';
+            case 'ready': return 'Pronto';
+            default: return status || 'Desconhecido';
         }
     }
 
-    function getResolutionText(resolution) {
-        switch (resolution) {
-            case 'confirmed': return 'Confirmado';
-            case 'corrected': return 'Corrigido';
-            case 'auto_validated': return 'Auto-validado';
-            default: return resolution;
-        }
-    }
-
-    function getAlteracoes(delivery) {
-        const alteracoes = [];
-        
-        if (delivery.originalPrice !== undefined && delivery.originalPrice !== delivery.priceOnDelivery) {
-            alteracoes.push(`Preço: ${delivery.originalPrice}€ → ${delivery.priceOnDelivery}€`);
-        }
-        
-        if (delivery.originalPaymentMethod && delivery.originalPaymentMethod !== delivery.paymentMethod) {
-            alteracoes.push(`Pagamento: ${delivery.originalPaymentMethod} → ${delivery.paymentMethod}`);
-        }
-        
-        if (delivery.resolutionNotes) {
-            alteracoes.push(`Notas: ${delivery.resolutionNotes}`);
-        }
-        
-        return alteracoes.join('; ') || 'Sem alterações registadas';
-    }
-
-    // CORREÇÃO: Evento do botão de exportação
-    if (exportExcelBtn) {
-        exportExcelBtn.addEventListener('click', function(e) {
-            e.preventDefault();
+    // CORREÇÃO: Event listener para botão de exportação
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            console.log('🖱️ Botão de exportação clicado');
             exportToExcel();
         });
-        
-        console.log('✅ Botão de exportação configurado');
-    } else {
-        console.warn('⚠️ Botão de exportação não encontrado');
     }
 
-    // CORREÇÃO: Auto-conectar com dashboard quando dados estiverem disponíveis
-    const originalSetDeliveryData = window.dashboard?.setDeliveryData;
-    if (originalSetDeliveryData) {
-        window.dashboard.setDeliveryData = function(data) {
-            // Chamar função original
-            originalSetDeliveryData.call(this, data);
+    // CORREÇÃO: Função para mostrar histórico de exportações
+    function showExportHistory() {
+        try {
+            const history = JSON.parse(localStorage.getItem('caixa_export_history') || '[]');
             
-            // Auto-configurar exportação
-            const stats = window.dashboard.getStats ? window.dashboard.getStats() : {};
-            setExportData(data, stats);
-        };
+            if (history.length === 0) {
+                alert('Nenhuma exportação encontrada no histórico.');
+                return;
+            }
+
+            let historyText = 'Histórico de Exportações:\n\n';
+            history.forEach((record, index) => {
+                const date = new Date(record.timestamp).toLocaleString('pt-PT');
+                historyText += `${index + 1}. ${record.filename}\n`;
+                historyText += `   Data: ${date}\n`;
+                historyText += `   Registros: ${record.totalRecords}\n\n`;
+            });
+
+            alert(historyText);
+
+        } catch (error) {
+            console.error('❌ Erro ao mostrar histórico:', error);
+            alert('Erro ao carregar histórico de exportações.');
+        }
     }
 
     // Exportar funções
     window.exporter = {
-        setExportData: setExportData,
         exportToExcel: exportToExcel,
-        isReady: () => exportData.length > 0
+        showExportHistory: showExportHistory,
+        collectAllData: collectAllData
     };
 
-    console.log('✅ Exportador corrigido carregado!');
-    
-    // Verificar se já há dados para exportar
-    if (window.dashboard && window.dashboard.getStats) {
-        const stats = window.dashboard.getStats();
-        if (stats && Object.keys(stats).length > 0) {
-            console.log('📊 Dados de dashboard encontrados, configurando exportação...');
-            // Tentar obter dados de entregas das outras funções
-            const deliveryData = window.validator ? window.validator.getValidatedDeliveries() : [];
-            if (deliveryData.length > 0) {
-                setExportData(deliveryData, stats);
-            }
-        }
-    }
+    console.log('✅ Sistema de exportação corrigido carregado!');
 });
+
