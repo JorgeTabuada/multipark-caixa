@@ -1,12 +1,10 @@
-// validator-fixed.js - Sistema de validação corrigido
+// validator-fixed.js - Correção do sistema de validação
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 Carregando validador corrigido...');
-    
     // Elementos da interface
     const driverSelect = document.getElementById('driver-select');
     const driverSelection = document.getElementById('driver-selection');
     const driverDeliveries = document.getElementById('driver-deliveries');
-    const deliveriesTable = document.getElementById('deliveries-table')?.querySelector('tbody');
+    const deliveriesTable = document.getElementById('deliveries-table').querySelector('tbody');
     const deliveryCountElement = document.getElementById('delivery-count');
     const addCaixaBtn = document.getElementById('add-caixa-btn');
     const closeCaixaBtn = document.getElementById('close-caixa-btn');
@@ -16,27 +14,24 @@ document.addEventListener('DOMContentLoaded', function() {
     let pendingDeliveries = [];
     let currentDriverDeliveries = [];
     let drivers = [];
-    let allCaixaRecords = []; // CORREÇÃO: Manter todos os registros
+    let allCaixaRecords = []; // CORREÇÃO: Manter todos os registros de caixa
 
     /**
      * CORREÇÃO: Função para iniciar validação de caixa
      */
     function initCaixaValidation(caixaData) {
-        console.log("🚀 Iniciando validação com", caixaData?.length || 0, "registros");
+        console.log("🚀 Iniciando validação de caixa com dados:", caixaData?.length || 0, "registros");
         
         if (!caixaData || caixaData.length === 0) {
             console.warn('⚠️ Nenhum dado de caixa disponível');
-            if (window.showNotification) {
-                window.showNotification('Nenhum dado de caixa para validar.', 'warning');
-            }
             return;
         }
         
-        // CORREÇÃO: Adicionar novos registros sem apagar existentes
+        // CORREÇÃO: Adicionar novos registros aos existentes em vez de substituir
         if (allCaixaRecords.length > 0) {
-            console.log('📂 Adicionando', caixaData.length, 'novos aos', allCaixaRecords.length, 'existentes');
+            console.log('📂 Adicionando', caixaData.length, 'novos registros aos', allCaixaRecords.length, 'existentes');
             
-            // Evitar duplicatas baseado em matrícula + condutor
+            // Verificar duplicatas por matrícula + condutor
             const existingKeys = new Set(
                 allCaixaRecords.map(record => 
                     `${record.licensePlate}_${record.condutorEntrega}`.toLowerCase()
@@ -49,17 +44,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             allCaixaRecords.push(...newRecords);
-            console.log('✅ Adicionados', newRecords.length, 'únicos. Total:', allCaixaRecords.length);
-            
-            if (window.showNotification) {
-                window.showNotification(`Adicionados ${newRecords.length} novos registros. Total: ${allCaixaRecords.length}`, 'success');
-            }
+            console.log('✅ Adicionados', newRecords.length, 'registros únicos. Total:', allCaixaRecords.length);
         } else {
             allCaixaRecords = [...caixaData];
-            console.log('📝 Primeira carga:', allCaixaRecords.length, 'registros');
         }
         
-        // Obter dados de comparação
+        // Obter dados validados da comparação
         const comparisonResults = window.comparator ? window.comparator.getResults() : null;
         const validatedData = comparisonResults ? comparisonResults.all : [];
         
@@ -69,10 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // CORREÇÃO: Extrair condutores únicos de TODOS os registros
         drivers = [...new Set(allCaixaRecords.map(item => item.condutorEntrega).filter(Boolean))];
-        console.log("👥 Condutores:", drivers);
+        console.log("👥 Condutores encontrados:", drivers);
         
-        // Preencher interface
+        // Preencher select de condutores
         populateDriverSelect(drivers);
+        
+        // Mostrar interface
         driverSelection.classList.remove('hidden');
         
         // Processar entregas
@@ -84,20 +76,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * CORREÇÃO: Verificar inconsistências permanentes
+     * CORREÇÃO: Verificar inconsistências permanentes com validações específicas
      */
     function getPermanentInconsistency(delivery, validatedRecord) {
-        if (!window.PaymentValidation) {
-            console.warn('⚠️ PaymentValidation não disponível');
-            return null;
+        const inconsistencies = [];
+        
+        // CORREÇÃO: Validação para pagamento "no pay"
+        if (delivery.paymentMethod && delivery.paymentMethod.toLowerCase() === 'no pay') {
+            // Verificar se campaignPay é false
+            const campaignPayIsFalse = validatedRecord && validatedRecord.boRecord && 
+                                     (validatedRecord.boRecord.campaignPay === false || 
+                                      validatedRecord.boRecord.campaignPay === 'false');
+            
+            if (!campaignPayIsFalse) {
+                inconsistencies.push('no_pay_without_campaign_pay_false');
+            }
         }
         
-        const errors = window.PaymentValidation.validatePayment(delivery, validatedRecord);
-        return errors.filter(error => error.type === 'permanent');
+        // CORREÇÃO: Validação para pagamento "online"
+        if (delivery.paymentMethod && delivery.paymentMethod.toLowerCase() === 'online') {
+            // Verificar se hasOnlinePayment é true
+            const hasOnlinePaymentTrue = validatedRecord && validatedRecord.boRecord && 
+                                       (validatedRecord.boRecord.hasOnlinePayment === true || 
+                                        validatedRecord.boRecord.hasOnlinePayment === 'true');
+            
+            if (!hasOnlinePaymentTrue) {
+                inconsistencies.push('online_without_online_payment_true');
+            }
+        }
+        
+        return inconsistencies.length > 0 ? inconsistencies : null;
     }
 
     /**
-     * CORREÇÃO: Processar entregas com melhor ID management
+     * CORREÇÃO: Processar entregas com melhores validações
      */
     function processDeliveries(caixaData, validatedData) {
         console.log('🔄 A processar', caixaData.length, 'entregas...');
@@ -107,35 +119,35 @@ document.addEventListener('DOMContentLoaded', function() {
         if (validatedData && validatedData.length > 0) {
             validatedData.forEach(record => {
                 if (record.licensePlate) {
-                    const normalizedPlate = window.normalizeLicensePlate(record.licensePlate);
-                    validatedMap.set(normalizedPlate, record);
+                    validatedMap.set(record.licensePlate.toString().toLowerCase(), record);
                 }
             });
         }
         
-        // Manter entregas já validadas
+        // Resetar entregas pendentes (manter as já validadas)
         const existingValidated = pendingDeliveries.filter(d => d.status === 'validated');
         pendingDeliveries = [...existingValidated];
         
-        // Processar cada entrega
-        caixaData.forEach((delivery, index) => {
+        // Processar cada entrega da caixa
+        caixaData.forEach(delivery => {
             if (!delivery.licensePlate) return;
             
-            // CORREÇÃO: Verificar se já foi processada
-            const alreadyProcessed = validatedDeliveries.some(vd => 
+            // CORREÇÃO: Verificar se já foi validada
+            const alreadyValidated = validatedDeliveries.some(vd => 
                 vd.licensePlate === delivery.licensePlate && 
                 vd.condutorEntrega === delivery.condutorEntrega
             ) || pendingDeliveries.some(pd => 
                 pd.licensePlate === delivery.licensePlate && 
-                pd.condutorEntrega === delivery.condutorEntrega
+                pd.condutorEntrega === delivery.condutorEntrega && 
+                pd.status === 'validated'
             );
             
-            if (alreadyProcessed) {
-                console.log('⏭️ Já processada:', delivery.licensePlate);
+            if (alreadyValidated) {
+                console.log('⏭️ Entrega já validada:', delivery.licensePlate);
                 return;
             }
             
-            const licensePlateLower = window.normalizeLicensePlate(delivery.licensePlate);
+            const licensePlateLower = delivery.licensePlate.toString().toLowerCase();
             const validatedRecord = validatedMap.get(licensePlateLower);
             
             // Verificar inconsistências
@@ -147,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const bookingPriceBO = parseFloat(validatedRecord.bookingPriceBO) || 0;
                 const bookingPriceOdoo = parseFloat(validatedRecord.bookingPriceOdoo) || 0;
                 
-                // Verificar diferenças de preço (tolerância de 0.01€)
+                // Verificar diferenças de preço
                 if (Math.abs(deliveryPrice - bookingPriceBO) > 0.01) {
                     inconsistencies.push('bookingPriceBO');
                 }
@@ -156,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     inconsistencies.push('bookingPriceOdoo');
                 }
                 
-                // CORREÇÃO: Verificar inconsistências permanentes de pagamento
+                // CORREÇÃO: Verificar inconsistências permanentes
                 permanentInconsistencies = getPermanentInconsistency(delivery, validatedRecord);
                 
             } else {
@@ -165,15 +177,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Determinar status
             let status = 'pending';
-            if (inconsistencies.length > 0 || (permanentInconsistencies && permanentInconsistencies.length > 0)) {
+            if (inconsistencies.length > 0 || permanentInconsistencies) {
                 status = 'inconsistent';
             } else {
                 status = 'ready';
             }
             
-            // CORREÇÃO: Criar objeto com ID único baseado em timestamp + index
+            // CORREÇÃO: Criar objeto de entrega com ID único
             const deliveryObject = {
-                id: `${delivery.licensePlate}_${delivery.condutorEntrega}_${Date.now()}_${index}`,
+                id: `${delivery.licensePlate}_${delivery.condutorEntrega}_${Date.now()}`,
                 licensePlate: delivery.licensePlate,
                 alocation: delivery.alocation,
                 checkOut: window.DateUtils ? 
@@ -206,19 +218,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * CORREÇÃO: Renderizar tabela com gestão correta de IDs
+     * CORREÇÃO: Renderizar tabela com melhor gestão de IDs
      */
     function renderDeliveriesTable(deliveries) {
-        if (!deliveriesTable) {
-            console.error('❌ Tabela não encontrada');
-            return;
-        }
-        
         deliveriesTable.innerHTML = '';
         
         if (deliveries.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="7" class="text-center">Nenhuma entrega para este condutor.</td>';
+            row.innerHTML = '<td colspan="7" class="text-center">Nenhuma entrega pendente para este condutor.</td>';
             deliveriesTable.appendChild(row);
             return;
         }
@@ -226,8 +233,8 @@ document.addEventListener('DOMContentLoaded', function() {
         deliveries.forEach(delivery => {
             const row = document.createElement('tr');
             
-            // Styling baseado no status
-            if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
+            // Status styling
+            if (delivery.permanentInconsistencies) {
                 row.classList.add('status-error');
             } else if (delivery.status === 'inconsistent') {
                 row.classList.add('status-warning');
@@ -257,7 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * CORREÇÃO: Eventos com busca por ID
+     * CORREÇÃO: Eventos dos botões com busca por ID
      */
     function addDeliveryTableButtonEvents() {
         document.querySelectorAll('.view-delivery-details').forEach(button => {
@@ -276,87 +283,100 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * CORREÇÃO: Modal de detalhes com busca corrigida
+     * CORREÇÃO: Mostrar modal de detalhes com busca corrigida
      */
     function showDeliveryDetailsModal(deliveryId) {
-        // CORREÇÃO: Buscar em todas as listas possíveis
         const delivery = currentDriverDeliveries.find(d => d.id === deliveryId) || 
                         validatedDeliveries.find(d => d.id === deliveryId) ||
                         pendingDeliveries.find(d => d.id === deliveryId);
         
         if (!delivery) {
-            console.error('❌ Entrega não encontrada:', deliveryId);
-            if (window.showNotification) {
-                window.showNotification('Entrega não encontrada!', 'error');
-            }
+            console.error('❌ Entrega não encontrada com ID:', deliveryId);
+            alert('Entrega não encontrada!');
             return;
         }
         
         const modalBody = document.getElementById('details-modal-body');
         if (!modalBody) {
-            console.error('❌ Modal não encontrado');
+            console.error('❌ Modal de detalhes não encontrado');
             return;
         }
         
-        modalBody.innerHTML = `
+        modalBody.innerHTML = '';
+        
+        const content = document.createElement('div');
+        content.innerHTML = `
             <h4>Entrega: ${delivery.alocation || delivery.licensePlate}</h4>
             <p><strong>Matrícula:</strong> ${delivery.licensePlate}</p>
-            <p><strong>Data Checkout:</strong> ${delivery.checkOut}</p>
+            <p><strong>Data de Checkout:</strong> ${delivery.checkOut}</p>
             <p><strong>Condutor:</strong> ${delivery.condutorEntrega}</p>
             <p><strong>Status:</strong> ${getStatusText(delivery)}</p>
             ${delivery.resolution ? `<p><strong>Resolução:</strong> ${getResolutionText(delivery.resolution)}</p>` : ''}
             
             <h4 class="mt-20">Detalhes de Pagamento</h4>
             <table class="table">
-                <tr><th>Método</th><td>${delivery.paymentMethod}</td></tr>
+                <tr><th>Método de Pagamento</th><td>${delivery.paymentMethod}</td></tr>
                 <tr><th>Valor na Entrega</th><td>${delivery.priceOnDelivery} €</td></tr>
                 <tr><th>Campanha</th><td>${delivery.campaign || 'N/A'}</td></tr>
-                <tr><th>Tipo Campanha</th><td>${delivery.campaignPay || 'N/A'}</td></tr>
+                <tr><th>Tipo de Campanha</th><td>${delivery.campaignPay || 'N/A'}</td></tr>
             </table>
-            
-            ${delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0 ? `
-                <div class="status-error mt-20">
-                    <h4>⚠️ Inconsistências Permanentes</h4>
-                    <ul>
-                        ${delivery.permanentInconsistencies.map(error => 
-                            `<li>${error.message}</li>`
-                        ).join('')}
-                    </ul>
-                    <p><em>Estas inconsistências não desaparecem após validação.</em></p>
-                </div>
-            ` : ''}
-            
-            ${delivery.inconsistencies && delivery.inconsistencies.length > 0 ? `
-                <h4 class="mt-20">Inconsistências</h4>
+        `;
+        
+        // CORREÇÃO: Verificar inconsistências permanentes
+        if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
+            const permanentDiv = document.createElement('div');
+            permanentDiv.className = 'status-error mt-20';
+            permanentDiv.innerHTML = `
+                <h4>⚠️ Inconsistências Permanentes</h4>
                 <ul>
-                    ${delivery.inconsistencies.map(inc => {
-                        if (inc === 'bookingPriceBO') {
-                            return `<li>Preço Entrega: ${delivery.priceOnDelivery}€ vs BO: ${delivery.validatedRecord?.bookingPriceBO}€</li>`;
-                        } else if (inc === 'bookingPriceOdoo') {
-                            return `<li>Preço Entrega: ${delivery.priceOnDelivery}€ vs Odoo: ${delivery.validatedRecord?.bookingPriceOdoo}€</li>`;
-                        } else if (inc === 'missing_record') {
-                            return '<li>Registro não encontrado na comparação</li>';
+                    ${delivery.permanentInconsistencies.map(inc => {
+                        if (inc === 'no_pay_without_campaign_pay_false') {
+                            return '<li>Pagamento "No Pay" mas campaignPay não é false no Back Office</li>';
+                        } else if (inc === 'online_without_online_payment_true') {
+                            return '<li>Pagamento "Online" mas hasOnlinePayment não é true no Back Office</li>';
                         }
                         return `<li>${inc}</li>`;
                     }).join('')}
                 </ul>
-            ` : ''}
-        `;
+                <p><em>Estas inconsistências não desaparecem mesmo após validação.</em></p>
+            `;
+            content.appendChild(permanentDiv);
+        }
         
+        // Outras inconsistências
+        if (delivery.inconsistencies && delivery.inconsistencies.length > 0) {
+            const inconsistenciesDiv = document.createElement('div');
+            inconsistenciesDiv.innerHTML = `
+                <h4 class="mt-20">Inconsistências</h4>
+                <ul>
+                    ${delivery.inconsistencies.map(inc => {
+                        if (inc === 'bookingPriceBO') {
+                            return `<li>Preço na Entrega: ${delivery.priceOnDelivery} € vs Booking BO: ${delivery.validatedRecord?.bookingPriceBO || 'N/A'} €</li>`;
+                        } else if (inc === 'bookingPriceOdoo') {
+                            return `<li>Preço na Entrega: ${delivery.priceOnDelivery} € vs Booking Odoo: ${delivery.validatedRecord?.bookingPriceOdoo || 'N/A'} €</li>`;
+                        } else if (inc === 'missing_record') {
+                            return '<li>Registro não encontrado na comparação Odoo vs Back Office</li>';
+                        }
+                        return `<li>${inc}</li>`;
+                    }).join('')}
+                </ul>
+            `;
+            content.appendChild(inconsistenciesDiv);
+        }
+        
+        modalBody.appendChild(content);
         document.getElementById('details-modal-overlay').style.display = 'flex';
     }
 
     /**
-     * CORREÇÃO: Modal de validação
+     * CORREÇÃO: Validar entrega com melhor gestão
      */
     function showValidateDeliveryModal(deliveryId) {
         const delivery = currentDriverDeliveries.find(d => d.id === deliveryId);
         
         if (!delivery) {
             console.error('❌ Entrega não encontrada para validação:', deliveryId);
-            if (window.showNotification) {
-                window.showNotification('Entrega não encontrada!', 'error');
-            }
+            alert('Entrega não encontrada!');
             return;
         }
         
@@ -372,10 +392,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const content = document.createElement('div');
         content.innerHTML = `
-            <h4>Validar: ${delivery.alocation || delivery.licensePlate}</h4>
+            <h4>Validar Entrega: ${delivery.alocation || delivery.licensePlate}</h4>
             <p><strong>Matrícula:</strong> ${delivery.licensePlate}</p>
-            <p><strong>Método:</strong> ${delivery.paymentMethod}</p>
-            <p><strong>Valor:</strong> ${delivery.priceOnDelivery} €</p>
+            <p><strong>Método de Pagamento:</strong> ${delivery.paymentMethod}</p>
+            <p><strong>Valor na Entrega:</strong> ${delivery.priceOnDelivery} €</p>
         `;
         
         // CORREÇÃO: Aviso para inconsistências permanentes
@@ -385,11 +405,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h4>⚠️ Atenção: Inconsistências Permanentes</h4>
                     <p>Esta entrega tem inconsistências que <strong>não podem ser corrigidas</strong>:</p>
                     <ul>
-                        ${delivery.permanentInconsistencies.map(error => 
-                            `<li>${error.message}</li>`
-                        ).join('')}
+                        ${delivery.permanentInconsistencies.map(inc => {
+                            if (inc === 'no_pay_without_campaign_pay_false') {
+                                return '<li>Pagamento "No Pay" sem campaignPay=false no Back Office</li>';
+                            } else if (inc === 'online_without_online_payment_true') {
+                                return '<li>Pagamento "Online" sem hasOnlinePayment=true no Back Office</li>';
+                            }
+                            return `<li>${inc}</li>`;
+                        }).join('')}
                     </ul>
-                    <p><strong>Podes validar, mas as inconsistências permanecerão.</strong></p>
+                    <p><strong>Podes validar a entrega, mas as inconsistências permanecerão registadas.</strong></p>
                 </div>
             `;
         }
@@ -415,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 
                 <div class="form-group mt-10">
-                    <label for="corrected-payment-method">Método Corrigido:</label>
+                    <label for="corrected-payment-method">Método de Pagamento Corrigido:</label>
                     <select id="corrected-payment-method" class="form-control">
                         <option value="${delivery.paymentMethod}" selected>${delivery.paymentMethod}</option>
                         <option value="numerário">numerário</option>
@@ -426,8 +451,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 
                 <div class="form-group mt-10">
-                    <label for="correction-notes">Notas:</label>
-                    <textarea id="correction-notes" class="form-control" rows="3" placeholder="Descreve as alterações..."></textarea>
+                    <label for="correction-notes">Notas de Correção:</label>
+                    <textarea id="correction-notes" class="form-control" rows="3" placeholder="Descreve as alterações realizadas..."></textarea>
                 </div>
             </div>
             
@@ -478,10 +503,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * CORREÇÃO: Validar entrega preservando inconsistências permanentes
+     * CORREÇÃO: Validar entrega com preservação de inconsistências permanentes
      */
     function validateDelivery(delivery, resolution, correctedPrice, correctionNotes, correctedPaymentMethod) {
-        console.log('✅ Validando:', delivery.licensePlate, 'Resolução:', resolution);
+        console.log('✅ A validar entrega:', delivery.licensePlate, 'Resolução:', resolution);
         
         // Guardar valores originais se há correções
         if (resolution === 'corrected') {
@@ -496,41 +521,34 @@ document.addEventListener('DOMContentLoaded', function() {
             delivery.userNotes = correctionNotes;
         }
         
-        // Atualizar status
+        // Atualizar status e resolução
         delivery.status = 'validated';
         delivery.resolution = resolution;
         
-        // IMPORTANTE: Preservar inconsistências permanentes
-        if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
-            console.log('⚠️ Preservando inconsistências permanentes');
+        // IMPORTANTE: Preservar inconsistências permanentes mesmo após validação
+        if (delivery.permanentInconsistencies) {
+            console.log('⚠️ Preservando inconsistências permanentes:', delivery.permanentInconsistencies);
             delivery.permanentInconsistency = true; // Flag para relatórios
         }
         
-        // Mover da lista atual para validadas
+        // Remover da lista atual do condutor
         const index = currentDriverDeliveries.findIndex(d => d.id === delivery.id);
         if (index !== -1) {
             currentDriverDeliveries.splice(index, 1);
         }
         
+        // Adicionar às validadas
         validatedDeliveries.push(delivery);
         
         // Atualizar interface
         renderDeliveriesTable(currentDriverDeliveries);
-        if (deliveryCountElement) {
-            deliveryCountElement.textContent = currentDriverDeliveries.length;
-        }
+        deliveryCountElement.textContent = currentDriverDeliveries.length;
         
-        if (window.showNotification) {
-            window.showNotification('Entrega validada com sucesso!', 'success');
-        }
-        
-        console.log('✅ Validação concluída');
+        console.log('✅ Entrega validada com sucesso');
     }
 
-    // Funções auxiliares
+    // Resto das funções...
     function populateDriverSelect(driversList) {
-        if (!driverSelect) return;
-        
         driverSelect.innerHTML = '<option value="">Seleciona um condutor</option>';
         
         driversList.forEach(driver => {
@@ -559,77 +577,60 @@ document.addEventListener('DOMContentLoaded', function() {
         switch (resolution) {
             case 'confirmed': return 'Confirmado';
             case 'corrected': return 'Corrigido';
-            case 'auto_validated': return 'Auto-validado';
+            case 'auto_validated': return 'Validado Automaticamente';
             default: return resolution;
         }
     }
 
-    // Eventos principais
-    if (driverSelect) {
-        driverSelect.addEventListener('change', function() {
-            const selectedDriver = this.value;
+    // Eventos
+    driverSelect.addEventListener('change', function() {
+        const selectedDriver = this.value;
+        
+        if (selectedDriver) {
+            currentDriverDeliveries = pendingDeliveries.filter(delivery => 
+                delivery.condutorEntrega === selectedDriver && 
+                delivery.status !== 'validated'
+            );
             
-            if (selectedDriver) {
-                currentDriverDeliveries = pendingDeliveries.filter(delivery => 
-                    delivery.condutorEntrega === selectedDriver && 
-                    delivery.status !== 'validated'
-                );
-                
-                if (driverDeliveries) driverDeliveries.classList.remove('hidden');
-                if (deliveryCountElement) deliveryCountElement.textContent = currentDriverDeliveries.length;
-                renderDeliveriesTable(currentDriverDeliveries);
-            } else {
-                if (driverDeliveries) driverDeliveries.classList.add('hidden');
-            }
-        });
-    }
+            driverDeliveries.classList.remove('hidden');
+            deliveryCountElement.textContent = currentDriverDeliveries.length;
+            renderDeliveriesTable(currentDriverDeliveries);
+        } else {
+            driverDeliveries.classList.add('hidden');
+        }
+    });
 
     // CORREÇÃO: Botão "Adicionar Caixa" - não limpar dados
-    if (addCaixaBtn) {
-        addCaixaBtn.addEventListener('click', function() {
-            console.log('📂 Preparando para adicionar nova folha...');
-            
-            // Trigger upload sem limpar dados existentes
-            const caixaFileInput = document.getElementById('caixa-file');
-            if (caixaFileInput) {
-                caixaFileInput.click();
-            }
-            
-            if (window.showNotification) {
-                window.showNotification('Seleciona o arquivo da nova folha de caixa.', 'info');
-            }
-        });
-    }
+    addCaixaBtn.addEventListener('click', function() {
+        console.log('📂 Preparando para adicionar nova folha de caixa...');
+        
+        // Mostrar interface de upload sem limpar dados existentes
+        document.getElementById('caixa-upload').click();
+    });
 
     // Botão "Fechar Caixa"
-    if (closeCaixaBtn) {
-        closeCaixaBtn.addEventListener('click', function() {
-            const totalPending = pendingDeliveries.filter(d => d.status !== 'validated').length;
-            
-            if (totalPending > 0) {
-                if (!confirm(`Ainda há ${totalPending} entregas não validadas. Desejas fechar a caixa?`)) {
-                    return;
-                }
+    closeCaixaBtn.addEventListener('click', function() {
+        const totalPending = pendingDeliveries.filter(d => d.status !== 'validated').length;
+        
+        if (totalPending > 0) {
+            if (!confirm(`Ainda existem ${totalPending} entregas não validadas. Desejas encerrar a caixa?`)) {
+                return;
             }
-            
-            // Preparar dados para dashboard
-            const allDeliveries = [...validatedDeliveries, ...pendingDeliveries];
-            
-            if (window.dashboard && window.dashboard.setDeliveryData) {
-                window.dashboard.setDeliveryData(allDeliveries);
-            }
-            
-            // Mudar para dashboard
-            const dashboardTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
-            if (dashboardTab && window.changeTab) {
-                window.changeTab(dashboardTab);
-            }
-            
-            if (window.showNotification) {
-                window.showNotification('Caixa fechada! Dados enviados para dashboard.', 'success');
-            }
-        });
-    }
+        }
+        
+        // Preparar dados para dashboard
+        const allDeliveries = [...validatedDeliveries, ...pendingDeliveries];
+        
+        if (window.dashboard && window.dashboard.setDeliveryData) {
+            window.dashboard.setDeliveryData(allDeliveries);
+        }
+        
+        // Mudar para dashboard
+        const dashboardTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
+        if (dashboardTab && window.changeTab) {
+            window.changeTab(dashboardTab);
+        }
+    });
 
     // Fechar modais
     document.querySelectorAll('.modal-close').forEach(button => {
@@ -648,3 +649,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('✅ Validator corrigido carregado!');
 });
+
