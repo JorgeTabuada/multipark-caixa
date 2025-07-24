@@ -189,10 +189,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (result.duplicatesCount > 0) {
             const proceed = confirm(
-                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
-                `• Total no ficheiro: ${result.originalCount}\n` +
-                `• Duplicados: ${result.duplicatesCount}\n` +
-                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\\n\\n` +
+                `• Total no ficheiro: ${result.originalCount}\\n` +
+                `• Duplicados: ${result.duplicatesCount}\\n` +
+                `• Novos registos: ${result.uniqueData.length}\\n\\n` +
                 `Queres continuar e importar apenas os novos registos?`
             );
             
@@ -218,8 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`✅ ${result.uniqueData.length} novos registos Odoo salvos no Supabase!`);
                 
                 if (result.duplicatesCount > 0) {
-                    alert(`✅ Importação concluída!\n\n` +
-                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                    alert(`✅ Importação concluída!\\n\\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\\n` +
                           `• Duplicados ignorados: ${result.duplicatesCount}`);
                 }
                 
@@ -243,10 +243,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (result.duplicatesCount > 0) {
             const proceed = confirm(
-                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
-                `• Total no ficheiro: ${result.originalCount}\n` +
-                `• Duplicados: ${result.duplicatesCount}\n` +
-                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\\n\\n` +
+                `• Total no ficheiro: ${result.originalCount}\\n` +
+                `• Duplicados: ${result.duplicatesCount}\\n` +
+                `• Novos registos: ${result.uniqueData.length}\\n\\n` +
                 `Queres continuar e importar apenas os novos registos?`
             );
             
@@ -266,8 +266,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`✅ ${result.uniqueData.length} novos registos Back Office salvos no Supabase!`);
                 
                 if (result.duplicatesCount > 0) {
-                    alert(`✅ Importação concluída!\n\n` +
-                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                    alert(`✅ Importação concluída!\\n\\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\\n` +
                           `• Duplicados ignorados: ${result.duplicatesCount}`);
                 }
                 
@@ -291,10 +291,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (result.duplicatesCount > 0) {
             const proceed = confirm(
-                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\n\n` +
-                `• Total no ficheiro: ${result.originalCount}\n` +
-                `• Duplicados: ${result.duplicatesCount}\n` +
-                `• Novos registos: ${result.uniqueData.length}\n\n` +
+                `⚠️ Encontrados ${result.duplicatesCount} duplicados!\\n\\n` +
+                `• Total no ficheiro: ${result.originalCount}\\n` +
+                `• Duplicados: ${result.duplicatesCount}\\n` +
+                `• Novos registos: ${result.uniqueData.length}\\n\\n` +
                 `Queres continuar e importar apenas os novos registos?`
             );
             
@@ -314,8 +314,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`✅ ${result.uniqueData.length} novos registos Caixa salvos no Supabase!`);
                 
                 if (result.duplicatesCount > 0) {
-                    alert(`✅ Importação concluída!\n\n` +
-                          `• Novos registos importados: ${result.uniqueData.length}\n` +
+                    alert(`✅ Importação concluída!\\n\\n` +
+                          `• Novos registos importados: ${result.uniqueData.length}\\n` +
                           `• Duplicados ignorados: ${result.duplicatesCount}`);
                 }
                 
@@ -381,14 +381,69 @@ document.addEventListener('DOMContentLoaded', function() {
             .toLowerCase();
     }
     
+    /**
+     * 🔧 FUNÇÃO MELHORADA - Remove cidades do Odoo e normaliza marcas
+     * 
+     * Exemplos de transformação:
+     * "Redpark Lisbon" -> "REDPARK"  
+     * "Airpark Lisboa" -> "AIRPARK"
+     * "Skypark Porto" -> "SKYPARK"
+     * "redpark" -> "REDPARK"
+     */
     function standardizeParkName(parkName) {
         if (!parkName) return '';
         
-        return String(parkName)
-            .toLowerCase()
-            .replace(/\\s+(parking|estacionamento|park|parque)\\b/g, '')
-            .trim()
-            .toUpperCase();
+        let normalized = String(parkName).toLowerCase().trim();
+        
+        // ✅ LISTA DE CIDADES PARA REMOVER (PORTUGAL E OUTRAS)
+        const cities = [
+            // Portugal
+            'lisbon', 'lisboa', 'porto', 'oporto', 'aveiro', 'braga', 'coimbra', 
+            'faro', 'funchal', 'leiria', 'setubal', 'viseu', 'evora', 'beja',
+            'castelo branco', 'guarda', 'portalegre', 'santarem', 'viana do castelo',
+            'vila real', 'braganca', 'azores', 'madeira',
+            
+            // Outras cidades comuns
+            'madrid', 'barcelona', 'sevilla', 'valencia', 'bilbao', 'malaga',
+            'paris', 'london', 'rome', 'milan', 'berlin', 'amsterdam'
+        ];
+        
+        // ✅ REMOVER PALAVRAS RELACIONADAS COM ESTACIONAMENTO
+        const parkingWords = [
+            'parking', 'estacionamento', 'park', 'parque', 'garage', 'garagem',
+            'station', 'terminal', 'aeroporto', 'airport'
+        ];
+        
+        // ✅ REMOVER CIDADES DO NOME
+        cities.forEach(city => {
+            // Remover cidade no final: "redpark lisbon" -> "redpark"
+            const cityAtEnd = new RegExp(`\\\\s+${city}\\\\s*$`, 'gi');
+            normalized = normalized.replace(cityAtEnd, '');
+            
+            // Remover cidade no início: "lisbon redpark" -> "redpark" 
+            const cityAtStart = new RegExp(`^${city}\\\\s+`, 'gi');
+            normalized = normalized.replace(cityAtStart, '');
+            
+            // Remover cidade no meio: "red lisbon park" -> "red park"
+            const cityInMiddle = new RegExp(`\\\\s+${city}\\\\s+`, 'gi');
+            normalized = normalized.replace(cityInMiddle, ' ');
+        });
+        
+        // ✅ REMOVER PALAVRAS DE ESTACIONAMENTO
+        parkingWords.forEach(word => {
+            const regex = new RegExp(`\\\\s+${word}\\\\b`, 'gi');
+            normalized = normalized.replace(regex, '');
+        });
+        
+        // ✅ LIMPAR ESPAÇOS EXTRA E CONVERTER PARA MAIÚSCULAS
+        normalized = normalized
+            .replace(/\\s+/g, ' ')  // Múltiplos espaços -> um espaço
+            .trim()                  // Remover espaços início/fim  
+            .toUpperCase();         // Maiúsculas
+        
+        console.log(`🔄 Marca normalizada: "${parkName}" -> "${normalized}"`);
+        
+        return normalized;
     }
     
     function formatDate(dateValue) {
@@ -542,5 +597,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    console.log('✅ FileProcessor integrado com anti-duplicados pronto!');
+    console.log('✅ FileProcessor integrado com normalização de marcas pronto!');
 });
