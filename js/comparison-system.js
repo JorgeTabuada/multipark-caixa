@@ -124,7 +124,7 @@ class ComparisonSystem {
         return data.map(record => ({
             licensePlate: this.normalizeLicensePlate(record.licensePlate || record.imma || ''),
             bookingPrice: parseFloat(record.bookingPrice || record.price || 0),
-            parkBrand: (record.parkBrand || record.parking_name || '').toUpperCase(),
+            parkBrand: this.standardizeParkName(record.parkBrand || record.parking_name || ''),
             driver: record.driver || record.condutor || '',
             paymentMethod: (record.paymentMethod || '').toLowerCase(),
             campaign: record.campaign || '',
@@ -169,10 +169,19 @@ class ComparisonSystem {
             comparison.inconsistencies.push(`Preço diferente: Odoo €${odooRecord.bookingPrice.toFixed(2)} vs BO €${backofficeRecord.bookingPrice.toFixed(2)}`);
         }
         
-        // Marca do parque
-        if (odooRecord.parkBrand !== backofficeRecord.parkBrand) {
+        // ✅ MARCA DO PARQUE - AGORA COM NORMALIZAÇÃO MELHORADA!
+        const normalizedOdooBrand = this.standardizeParkName(odooRecord.parkBrand);
+        const normalizedBOBrand = this.standardizeParkName(backofficeRecord.parkBrand);
+        
+        if (normalizedOdooBrand !== normalizedBOBrand) {
             comparison.status = 'inconsistent';
-            comparison.inconsistencies.push(`Marca diferente: Odoo "${odooRecord.parkBrand}" vs BO "${backofficeRecord.parkBrand}"`);
+            comparison.inconsistencies.push(`Marca diferente: Odoo "${normalizedOdooBrand}" vs BO "${normalizedBOBrand}"`);
+            console.log(`🔍 Marca diferente detectada:`, {
+                original_odoo: odooRecord.parkBrand,
+                original_bo: backofficeRecord.parkBrand,
+                normalized_odoo: normalizedOdooBrand,
+                normalized_bo: normalizedBOBrand
+            });
         }
         
         // Condutor
@@ -484,7 +493,8 @@ class ComparisonSystem {
                             <h4>Dados Odoo:</h4>
                             ${result.odooRecord ? `
                                 <p><strong>Preço:</strong> €${result.odooRecord.bookingPrice.toFixed(2)}</p>
-                                <p><strong>Marca:</strong> ${result.odooRecord.parkBrand}</p>
+                                <p><strong>Marca Original:</strong> ${result.odooRecord.originalRecord?.parkBrand || result.odooRecord.originalRecord?.parking_name || 'N/A'}</p>
+                                <p><strong>Marca Normalizada:</strong> ${result.odooRecord.parkBrand}</p>
                                 <p><strong>Condutor:</strong> ${result.odooRecord.driver || 'N/A'}</p>
                             ` : '<p class="text-muted">Registro não encontrado no Odoo</p>'}
                         </div>
@@ -493,7 +503,8 @@ class ComparisonSystem {
                             <h4>Dados Back Office:</h4>
                             ${result.backofficeRecord ? `
                                 <p><strong>Preço:</strong> €${result.backofficeRecord.bookingPrice.toFixed(2)}</p>
-                                <p><strong>Marca:</strong> ${result.backofficeRecord.parkBrand}</p>
+                                <p><strong>Marca Original:</strong> ${result.backofficeRecord.originalRecord?.parkBrand || 'N/A'}</p>
+                                <p><strong>Marca Normalizada:</strong> ${result.backofficeRecord.parkBrand}</p>
                                 <p><strong>Condutor:</strong> ${result.backofficeRecord.driver || 'N/A'}</p>
                                 <p><strong>Alocação:</strong> ${result.alocation}</p>
                             ` : '<p class="text-muted">Registro não encontrado no Back Office</p>'}
@@ -612,6 +623,69 @@ class ComparisonSystem {
             .toLowerCase();
     }
     
+    /**
+     * 🔧 FUNÇÃO MELHORADA - Remove cidades do Odoo e normaliza marcas
+     * 
+     * Exemplos de transformação:
+     * "Redpark Lisbon" -> "REDPARK"  
+     * "Airpark Lisboa" -> "AIRPARK"
+     * "Skypark Porto" -> "SKYPARK"
+     * "redpark" -> "REDPARK"
+     */
+    standardizeParkName(parkName) {
+        if (!parkName) return '';
+        
+        let normalized = String(parkName).toLowerCase().trim();
+        
+        // ✅ LISTA DE CIDADES PARA REMOVER (PORTUGAL E OUTRAS)
+        const cities = [
+            // Portugal
+            'lisbon', 'lisboa', 'porto', 'oporto', 'aveiro', 'braga', 'coimbra', 
+            'faro', 'funchal', 'leiria', 'setubal', 'viseu', 'evora', 'beja',
+            'castelo branco', 'guarda', 'portalegre', 'santarem', 'viana do castelo',
+            'vila real', 'braganca', 'azores', 'madeira',
+            
+            // Outras cidades comuns
+            'madrid', 'barcelona', 'sevilla', 'valencia', 'bilbao', 'malaga',
+            'paris', 'london', 'rome', 'milan', 'berlin', 'amsterdam'
+        ];
+        
+        // ✅ REMOVER PALAVRAS RELACIONADAS COM ESTACIONAMENTO
+        const parkingWords = [
+            'parking', 'estacionamento', 'park', 'parque', 'garage', 'garagem',
+            'station', 'terminal', 'aeroporto', 'airport'
+        ];
+        
+        // ✅ REMOVER CIDADES DO NOME
+        cities.forEach(city => {
+            // Remover cidade no final: "redpark lisbon" -> "redpark"
+            const cityAtEnd = new RegExp(`\\s+${city}\\s*$`, 'gi');
+            normalized = normalized.replace(cityAtEnd, '');
+            
+            // Remover cidade no início: "lisbon redpark" -> "redpark" 
+            const cityAtStart = new RegExp(`^${city}\\s+`, 'gi');
+            normalized = normalized.replace(cityAtStart, '');
+            
+            // Remover cidade no meio: "red lisbon park" -> "red park"
+            const cityInMiddle = new RegExp(`\\s+${city}\\s+`, 'gi');
+            normalized = normalized.replace(cityInMiddle, ' ');
+        });
+        
+        // ✅ REMOVER PALAVRAS DE ESTACIONAMENTO
+        parkingWords.forEach(word => {
+            const regex = new RegExp(`\\s+${word}\\b`, 'gi');
+            normalized = normalized.replace(regex, '');
+        });
+        
+        // ✅ LIMPAR ESPAÇOS EXTRA E CONVERTER PARA MAIÚSCULAS
+        normalized = normalized
+            .replace(/\\s+/g, ' ')  // Múltiplos espaços -> um espaço
+            .trim()                  // Remover espaços início/fim  
+            .toUpperCase();         // Maiúsculas
+        
+        return normalized;
+    }
+    
     showNotification(message, type = 'info') {
         if (window.caixaApp && window.caixaApp.showNotification) {
             window.caixaApp.showNotification(message, type);
@@ -671,4 +745,4 @@ window.comparator = {
 
 window.comparisonSystem = comparisonSystem;
 
-console.log('🔍 Sistema de Comparação carregado - Botão "Validar e Avançar" corrigido!');
+console.log('🔍 Sistema de Comparação com normalização de marcas melhorada carregado!');
