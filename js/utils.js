@@ -141,35 +141,66 @@ window.DateUtils = {
 // ===== CORREÇÃO: SISTEMA DE NORMALIZAÇÃO DE MARCAS =====
 window.BrandUtils = {
     /**
-     * CORREÇÃO: Normalizar nome de marca
+     * ✅ FUNÇÃO MELHORADA - Remove cidades do Odoo e normaliza marcas
+     * 
+     * Exemplos de transformação:
+     * "Redpark Lisbon" -> "REDPARK"  
+     * "Airpark Lisboa" -> "AIRPARK"
+     * "Skypark Porto" -> "SKYPARK"
+     * "redpark" -> "REDPARK"
      */
-    normalizeBrand(brandName) {
-        if (!brandName) return '';
+    normalizeBrand(parkName) {
+        if (!parkName) return '';
         
-        let normalized = String(brandName).toLowerCase().trim();
+        let normalized = String(parkName).toLowerCase().trim();
         
-        // Remover palavras relacionadas a estacionamento
-        normalized = normalized
-            .replace(/\s+parking\b/gi, '')
-            .replace(/\s+estacionamento\b/gi, '')
-            .replace(/\s+park\b/gi, '')
-            .replace(/\s+parque\b/gi, '');
-        
-        // Remover cidades portuguesas comuns
+        // ✅ LISTA DE CIDADES PARA REMOVER (PORTUGAL E OUTRAS)
         const cities = [
-            'lisboa', 'lisbon', 'porto', 'oporto', 'coimbra', 'braga', 
-            'aveiro', 'faro', 'setúbal', 'évora', 'leiria', 'viseu',
-            'santarém', 'castelo branco', 'beja', 'portalegre', 'guarda',
-            'viana do castelo', 'vila real', 'bragança'
+            // Portugal
+            'lisbon', 'lisboa', 'porto', 'oporto', 'aveiro', 'braga', 'coimbra', 
+            'faro', 'funchal', 'leiria', 'setubal', 'viseu', 'evora', 'beja',
+            'castelo branco', 'guarda', 'portalegre', 'santarem', 'viana do castelo',
+            'vila real', 'braganca', 'azores', 'madeira',
+            
+            // Outras cidades comuns
+            'madrid', 'barcelona', 'sevilla', 'valencia', 'bilbao', 'malaga',
+            'paris', 'london', 'rome', 'milan', 'berlin', 'amsterdam'
         ];
         
-        for (const city of cities) {
-            normalized = normalized.replace(new RegExp(`\\s+${city}$`, 'gi'), '');
-            normalized = normalized.replace(new RegExp(`^${city}\\s+`, 'gi'), '');
-            normalized = normalized.replace(new RegExp(`\\s+${city}\\s+`, 'gi'), ' ');
-        }
+        // ✅ REMOVER PALAVRAS RELACIONADAS COM ESTACIONAMENTO
+        const parkingWords = [
+            'parking', 'estacionamento', 'park', 'parque', 'garage', 'garagem',
+            'station', 'terminal', 'aeroporto', 'airport'
+        ];
         
-        return normalized.trim().toUpperCase();
+        // ✅ REMOVER CIDADES DO NOME
+        cities.forEach(city => {
+            // Remover cidade no final: "redpark lisbon" -> "redpark"
+            const cityAtEnd = new RegExp(`\\s+${city}\\s*$`, 'gi');
+            normalized = normalized.replace(cityAtEnd, '');
+            
+            // Remover cidade no início: "lisbon redpark" -> "redpark" 
+            const cityAtStart = new RegExp(`^${city}\\s+`, 'gi');
+            normalized = normalized.replace(cityAtStart, '');
+            
+            // Remover cidade no meio: "red lisbon park" -> "red park"
+            const cityInMiddle = new RegExp(`\\s+${city}\\s+`, 'gi');
+            normalized = normalized.replace(cityInMiddle, ' ');
+        });
+        
+        // ✅ REMOVER PALAVRAS DE ESTACIONAMENTO
+        parkingWords.forEach(word => {
+            const regex = new RegExp(`\\s+${word}\\b`, 'gi');
+            normalized = normalized.replace(regex, '');
+        });
+        
+        // ✅ LIMPAR ESPAÇOS EXTRA E CONVERTER PARA MAIÚSCULAS
+        normalized = normalized
+            .replace(/\s+/g, ' ')  // Múltiplos espaços -> um espaço
+            .trim()                  // Remover espaços início/fim  
+            .toUpperCase();         // Maiúsculas
+        
+        return normalized;
     },
 
     /**
@@ -380,7 +411,14 @@ window.Utils = {
      */
     normalizeLicensePlate(plate) {
         if (!plate) return '';
-        return String(plate).replace(/[\s\-\.\,\/\\\(\)\[\]\{\}\+\*\?\^\$\|]/g, '').toLowerCase();
+        return String(plate).replace(/[\s\-\.\,\/\\\\()\[\]{}+*?^$|]/g, '').toLowerCase();
+    },
+
+    /**
+     * ✅ FUNÇÃO MELHORADA - Mesma lógica dos outros arquivos
+     */
+    standardizeParkName(parkName) {
+        return window.BrandUtils.normalizeBrand(parkName);
     },
 
     /**
@@ -467,6 +505,8 @@ window.CaixaDebugger = {
     testBrandMatching() {
         const testBrands = [
             ['RedPark', 'RedPark Lisboa'],
+            ['Airpark Lisbon', 'Airpark'],
+            ['Skypark Porto', 'Skypark'],
             ['Estacionamento Central', 'Central Park'],
             ['Porto Parking', 'Porto'],
             ['Multipark Braga', 'Multipark']
@@ -524,6 +564,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Manter funções antigas para compatibilidade
 window.formatDate = window.DateUtils.formatForDisplay;
 window.normalizeLicensePlate = window.Utils.normalizeLicensePlate;
+window.standardizeParkName = window.Utils.standardizeParkName;
 
-console.log('🎯 Todos os utilitários corrigidos carregados!');
-
+console.log('🎯 Todos os utilitários corrigidos carregados com normalização de marcas uniforme!');
