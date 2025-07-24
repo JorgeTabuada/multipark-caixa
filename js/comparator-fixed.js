@@ -1,20 +1,20 @@
 // comparator-fixed.js - Correção da comparação com marcas e resolução de problemas
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔄 Carregando comparador corrigido...');
-    
+
     // Elementos da interface
     const odooCountElement = document.getElementById('odoo-count');
     const backofficeCountElement = document.getElementById('backoffice-count');
     const inconsistencyCountElement = document.getElementById('inconsistency-count');
     const missingCountElement = document.getElementById('missing-count');
-    const comparisonTable = document.getElementById('comparison-table')?.querySelector('tbody');
+    const comparisonTable = document.getElementById('comparison-table').querySelector('tbody');
     const validateComparisonBtn = document.getElementById('validate-comparison-btn');
-    
+
     // Botões de filtro
     const showAllBtn = document.getElementById('show-all-btn');
     const showMissingBtn = document.getElementById('show-missing-btn');
     const showInconsistentBtn = document.getElementById('show-inconsistent-btn');
-    
+
     // Variáveis para armazenar resultados
     let comparisonResults = {
         all: [],
@@ -30,239 +30,302 @@ document.addEventListener('DOMContentLoaded', function() {
         if (value === null || value === undefined || value === 'N/A') {
             return '';
         }
-        
-        let normalized = String(value).trim();
-        normalized = normalized.replace(/€/g, '').trim();
-        
-        if (!isNaN(normalized)) {
-            return Number(normalized);
-        }
-        
-        return normalized.toLowerCase();
+        return String(value).trim();
     }
 
     /**
-     * CORREÇÃO: Função principal de comparação
+     * CORREÇÃO: Normalizar marca com regras específicas
      */
-    window.compareOdooBackOffice = function(odooData, backOfficeData) {
-        console.log('🚀 Iniciando comparação com lógica corrigida...');
+    function normalizeBrand(brandName) {
+        if (!brandName) return '';
         
-        // Limpar resultados anteriores
+        let normalized = String(brandName).toLowerCase().trim();
+        
+        // Remover palavras relacionadas a estacionamento
+        normalized = normalized
+            .replace(/\s+parking\b/gi, '')
+            .replace(/\s+estacionamento\b/gi, '')
+            .replace(/\s+park\b/gi, '')
+            .replace(/\s+parque\b/gi, '');
+        
+        // Remover cidades portuguesas comuns
+        const cities = [
+            'lisboa', 'lisbon', 'porto', 'oporto', 'coimbra', 'braga', 
+            'aveiro', 'faro', 'setúbal', 'évora', 'leiria', 'viseu',
+            'santarém', 'castelo branco', 'beja', 'portalegre', 'guarda',
+            'viana do castelo', 'vila real', 'bragança'
+        ];
+        
+        for (const city of cities) {
+            normalized = normalized.replace(new RegExp(`\\s+${city}$`, 'gi'), '');
+            normalized = normalized.replace(new RegExp(`^${city}\\s+`, 'gi'), '');
+            normalized = normalized.replace(new RegExp(`\\s+${city}\\s+`, 'gi'), ' ');
+        }
+        
+        return normalized.trim().toUpperCase();
+    }
+
+    /**
+     * CORREÇÃO: Verificar se marcas coincidem
+     */
+    function brandsMatch(brand1, brand2) {
+        const norm1 = normalizeBrand(brand1);
+        const norm2 = normalizeBrand(brand2);
+        
+        console.log(`🔍 Comparação de marcas: "${brand1}" -> "${norm1}" vs "${brand2}" -> "${norm2}"`);
+        return norm1 === norm2;
+    }
+
+    /**
+     * CORREÇÃO: Normalizar matrícula
+     */
+    function normalizeLicensePlate(plate) {
+        if (!plate) return '';
+        return String(plate).replace(/[\s\-\.\,\/\\\(\)\[\]\{\}\+\*\?\^\$\|]/g, '').toLowerCase();
+    }
+
+    /**
+     * CORREÇÃO: Comparar dados do Odoo com Back Office
+     */
+    function compareData(odooData, backofficeData) {
+        console.log('🔄 Iniciando comparação de dados...');
+        console.log('📊 Dados Odoo:', odooData?.length || 0);
+        console.log('📊 Dados Back Office:', backofficeData?.length || 0);
+
+        if (!odooData || !backofficeData) {
+            console.error('❌ Dados insuficientes para comparação');
+            return;
+        }
+
+        // Resetar resultados
         comparisonResults = {
             all: [],
             inconsistent: [],
             missing: [],
             valid: []
         };
-        
-        // Atualizar contadores
-        if (odooCountElement) odooCountElement.textContent = odooData.length;
-        if (backofficeCountElement) backofficeCountElement.textContent = backOfficeData.length;
-        
-        // Criar mapas por matrícula normalizada
+
+        // Criar mapas para busca rápida
         const odooMap = new Map();
+        const backofficeMap = new Map();
+
+        // Processar dados do Odoo
         odooData.forEach(record => {
             if (record.licensePlate) {
-                const normalizedPlate = window.normalizeLicensePlate(record.licensePlate);
+                const normalizedPlate = normalizeLicensePlate(record.licensePlate);
                 odooMap.set(normalizedPlate, record);
             }
         });
-        
-        const backOfficeMap = new Map();
-        backOfficeData.forEach(record => {
+
+        // Processar dados do Back Office
+        backofficeData.forEach(record => {
             if (record.licensePlate) {
-                const normalizedPlate = window.normalizeLicensePlate(record.licensePlate);
-                backOfficeMap.set(normalizedPlate, record);
+                const normalizedPlate = normalizeLicensePlate(record.licensePlate);
+                backofficeMap.set(normalizedPlate, record);
             }
         });
 
-        // Verificar registros do Back Office
-        backOfficeData.forEach(boRecord => {
-            if (!boRecord.licensePlate) return;
-            
-            const licensePlate = boRecord.licensePlate;
-            const normalizedPlate = window.normalizeLicensePlate(licensePlate);
-            const odooRecord = odooMap.get(normalizedPlate);
-            
+        console.log('🗺️ Mapas criados - Odoo:', odooMap.size, 'Back Office:', backofficeMap.size);
+
+        // Comparar registros
+        const allPlates = new Set([...odooMap.keys(), ...backofficeMap.keys()]);
+        
+        allPlates.forEach(plate => {
+            const odooRecord = odooMap.get(plate);
+            const boRecord = backofficeMap.get(plate);
+
+            const comparison = {
+                licensePlate: odooRecord?.licensePlate || boRecord?.licensePlate,
+                odooRecord: odooRecord || null,
+                boRecord: boRecord || null,
+                inconsistencies: [],
+                status: 'valid'
+            };
+
+            // Verificar se existe em ambos os sistemas
             if (!odooRecord) {
-                // Registro ausente no Odoo
-                comparisonResults.missing.push({
-                    source: 'backoffice',
-                    licensePlate: licensePlate,
-                    alocation: boRecord.alocation || 'N/A',
-                    bookingPriceBO: boRecord.bookingPrice || 0,
-                    bookingPriceOdoo: 'N/A',
-                    parkBrand: boRecord.parkBrand || 'N/A',
-                    status: 'missing_in_odoo',
-                    boRecord: boRecord,
-                    odooRecord: null,
-                    resolution: null
-                });
+                comparison.inconsistencies.push('missing_in_odoo');
+                comparison.status = 'missing';
+            } else if (!boRecord) {
+                comparison.inconsistencies.push('missing_in_backoffice');
+                comparison.status = 'missing';
             } else {
-                // Verificar inconsistências
+                // Comparar campos específicos
                 const inconsistencies = [];
+
+                // CORREÇÃO: Comparação de preços com tolerância
+                const odooPrice = parseFloat(odooRecord.bookingPrice) || 0;
+                const boPrice = parseFloat(boRecord.bookingPrice) || 0;
                 
-                // CORREÇÃO: Verificar preço
-                if (normalizeValue(boRecord.bookingPrice) !== normalizeValue(odooRecord.bookingPrice)) {
-                    inconsistencies.push('bookingPrice');
+                if (Math.abs(odooPrice - boPrice) > 0.01) {
+                    inconsistencies.push('booking_price');
                 }
-                
-                // CORREÇÃO: Verificar marca usando nova lógica (ignora cidades)
-                if (window.BrandUtils && !window.BrandUtils.brandsMatch(boRecord.parkBrand, odooRecord.parkBrand)) {
-                    inconsistencies.push('parkBrand');
-                    console.log(`⚠️ Marca diferente: BO="${boRecord.parkBrand}" vs Odoo="${odooRecord.parkBrand}"`);
-                } else {
-                    console.log(`✅ Marcas compatíveis: BO="${boRecord.parkBrand}" vs Odoo="${odooRecord.parkBrand}"`);
+
+                // CORREÇÃO: Comparação de marcas usando função melhorada
+                if (!brandsMatch(odooRecord.parkBrand, boRecord.parkBrand)) {
+                    inconsistencies.push('park_brand');
                 }
+
+                // Comparação de condutor
+                const odooDriver = normalizeValue(odooRecord.condutorEntrega);
+                const boDriver = normalizeValue(boRecord.condutorEntrega);
                 
+                if (odooDriver !== boDriver) {
+                    inconsistencies.push('condutor_entrega');
+                }
+
+                // CORREÇÃO: Comparação de datas com formatação
+                if (odooRecord.checkOut && boRecord.checkOut) {
+                    const odooDate = window.DateUtils ? 
+                        window.DateUtils.formatForPostgreSQL(odooRecord.checkOut) : 
+                        odooRecord.checkOut;
+                    const boDate = window.DateUtils ? 
+                        window.DateUtils.formatForPostgreSQL(boRecord.checkOut) : 
+                        boRecord.checkOut;
+                    
+                    if (odooDate !== boDate) {
+                        inconsistencies.push('check_out');
+                    }
+                }
+
                 if (inconsistencies.length > 0) {
-                    // Registro inconsistente
-                    comparisonResults.inconsistent.push({
-                        source: 'both',
-                        licensePlate: licensePlate,
-                        alocation: boRecord.alocation || 'N/A',
-                        bookingPriceBO: boRecord.bookingPrice || 0,
-                        bookingPriceOdoo: odooRecord.bookingPrice || 0,
-                        parkBrand: boRecord.parkBrand || 'N/A',
-                        parkBrandOdoo: odooRecord.parkBrand || 'N/A',
-                        status: 'inconsistent',
-                        inconsistencies: inconsistencies,
-                        boRecord: boRecord,
-                        odooRecord: odooRecord,
-                        resolution: null
-                    });
-                } else {
-                    // Registro válido
-                    comparisonResults.valid.push({
-                        source: 'both',
-                        licensePlate: licensePlate,
-                        alocation: boRecord.alocation || 'N/A',
-                        bookingPriceBO: boRecord.bookingPrice || 0,
-                        bookingPriceOdoo: odooRecord.bookingPrice || 0,
-                        parkBrand: boRecord.parkBrand || 'N/A',
-                        status: 'valid',
-                        boRecord: boRecord,
-                        odooRecord: odooRecord,
-                        resolution: 'valid'
-                    });
+                    comparison.inconsistencies = inconsistencies;
+                    comparison.status = 'inconsistent';
                 }
             }
-        });
-        
-        // Verificar registros ausentes no Back Office
-        odooData.forEach(odooRecord => {
-            if (!odooRecord.licensePlate) return;
-            
-            const licensePlate = odooRecord.licensePlate;
-            const normalizedPlate = window.normalizeLicensePlate(licensePlate);
-            const boRecord = backOfficeMap.get(normalizedPlate);
-            
-            if (!boRecord) {
-                comparisonResults.missing.push({
-                    source: 'odoo',
-                    licensePlate: licensePlate,
-                    alocation: 'N/A',
-                    bookingPriceBO: 'N/A',
-                    bookingPriceOdoo: odooRecord.bookingPrice || 0,
-                    parkBrand: odooRecord.parkBrand || 'N/A',
-                    status: 'missing_in_backoffice',
-                    boRecord: null,
-                    odooRecord: odooRecord,
-                    resolution: null
-                });
+
+            // Adicionar preços para referência
+            comparison.bookingPriceOdoo = odooRecord?.bookingPrice || 0;
+            comparison.bookingPriceBO = boRecord?.bookingPrice || 0;
+
+            // Adicionar aos resultados apropriados
+            comparisonResults.all.push(comparison);
+
+            if (comparison.status === 'inconsistent') {
+                comparisonResults.inconsistent.push(comparison);
+            } else if (comparison.status === 'missing') {
+                comparisonResults.missing.push(comparison);
+            } else {
+                comparisonResults.valid.push(comparison);
             }
         });
-        
-        // Combinar todos os resultados
-        comparisonResults.all = [
-            ...comparisonResults.valid,
-            ...comparisonResults.inconsistent,
-            ...comparisonResults.missing
-        ];
-        
-        // Atualizar interface
-        if (inconsistencyCountElement) inconsistencyCountElement.textContent = comparisonResults.inconsistent.length;
-        if (missingCountElement) missingCountElement.textContent = comparisonResults.missing.length;
-        
-        console.log('📊 Resultados da comparação:', {
+
+        console.log('✅ Comparação concluída:', {
             total: comparisonResults.all.length,
             valid: comparisonResults.valid.length,
             inconsistent: comparisonResults.inconsistent.length,
             missing: comparisonResults.missing.length
         });
-        
+
+        // Atualizar interface
+        updateComparisonCounts();
         renderComparisonTable(comparisonResults.all);
-        updateValidateButton();
-        
-        // Mostrar notificação de sucesso
-        if (window.showNotification) {
-            window.showNotification(`Comparação concluída! ${comparisonResults.valid.length} válidos, ${comparisonResults.inconsistent.length} inconsistentes, ${comparisonResults.missing.length} ausentes.`, 'success');
+
+        // CORREÇÃO: Mostrar botão "Validar e Avançar" sempre que há dados
+        if (comparisonResults.all.length > 0) {
+            validateComparisonBtn.classList.remove('hidden');
+            console.log('✅ Botão "Validar e Avançar" ativado');
         }
-    };
+    }
+
+    /**
+     * CORREÇÃO: Atualizar contadores
+     */
+    function updateComparisonCounts() {
+        if (odooCountElement) {
+            const odooCount = comparisonResults.all.filter(r => r.odooRecord).length;
+            odooCountElement.textContent = odooCount;
+        }
+
+        if (backofficeCountElement) {
+            const boCount = comparisonResults.all.filter(r => r.boRecord).length;
+            backofficeCountElement.textContent = boCount;
+        }
+
+        if (inconsistencyCountElement) {
+            inconsistencyCountElement.textContent = comparisonResults.inconsistent.length;
+        }
+
+        if (missingCountElement) {
+            missingCountElement.textContent = comparisonResults.missing.length;
+        }
+    }
 
     /**
      * CORREÇÃO: Renderizar tabela de comparação
      */
-    function renderComparisonTable(records) {
+    function renderComparisonTable(data) {
         if (!comparisonTable) {
             console.error('❌ Tabela de comparação não encontrada');
             return;
         }
-        
+
         comparisonTable.innerHTML = '';
-        
-        if (records.length === 0) {
+
+        if (data.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="7" class="text-center">Nenhum registro encontrado.</td>';
+            row.innerHTML = '<td colspan="6" class="text-center">Nenhum resultado para mostrar</td>';
             comparisonTable.appendChild(row);
             return;
         }
-        
-        records.forEach(record => {
+
+        data.forEach(comparison => {
             const row = document.createElement('tr');
             
-            if (record.status === 'inconsistent') {
-                row.classList.add('status-error');
-            } else if (record.status.includes('missing')) {
+            // Aplicar classes de status
+            if (comparison.status === 'inconsistent') {
                 row.classList.add('status-warning');
-            } else if (record.status === 'valid') {
+            } else if (comparison.status === 'missing') {
+                row.classList.add('status-error');
+            } else {
                 row.classList.add('status-success');
             }
-            
+
+            const odooPrice = comparison.odooRecord?.bookingPrice || 'N/A';
+            const boPrice = comparison.boRecord?.bookingPrice || 'N/A';
+            const oodooBrand = comparison.odooRecord?.parkBrand || 'N/A';
+            const boBrand = comparison.boRecord?.parkBrand || 'N/A';
+
             row.innerHTML = `
-                <td>${record.licensePlate}</td>
-                <td>${record.alocation}</td>
-                <td>${record.bookingPriceBO} €</td>
-                <td>${record.bookingPriceOdoo} €</td>
-                <td>${record.parkBrand}</td>
-                <td>${getStatusText(record.status)}</td>
+                <td>${comparison.licensePlate}</td>
+                <td>${odooPrice} € / ${boPrice} €</td>
+                <td>${oodooBrand} / ${boBrand}</td>
+                <td>${getStatusText(comparison.status)}</td>
+                <td>${getInconsistenciesText(comparison.inconsistencies)}</td>
                 <td>
-                    <button class="btn btn-secondary btn-sm view-details" data-license="${record.licensePlate}">Detalhes</button>
-                    ${record.status !== 'valid' ? `<button class="btn btn-primary btn-sm resolve-issue" data-license="${record.licensePlate}">Resolver</button>` : ''}
+                    <button class="btn btn-secondary btn-sm view-comparison-details" data-plate="${comparison.licensePlate}">
+                        Detalhes
+                    </button>
+                    ${comparison.status !== 'valid' ? 
+                        `<button class="btn btn-primary btn-sm resolve-comparison" data-plate="${comparison.licensePlate}">
+                            Resolver
+                        </button>` : ''
+                    }
                 </td>
             `;
-            
+
             comparisonTable.appendChild(row);
         });
-        
-        addTableButtonEvents();
+
+        // Adicionar eventos aos botões
+        addComparisonTableEvents();
     }
 
     /**
-     * CORREÇÃO: Adicionar eventos aos botões
+     * CORREÇÃO: Adicionar eventos aos botões da tabela
      */
-    function addTableButtonEvents() {
-        document.querySelectorAll('.view-details').forEach(button => {
+    function addComparisonTableEvents() {
+        document.querySelectorAll('.view-comparison-details').forEach(button => {
             button.addEventListener('click', function() {
-                const licensePlate = this.getAttribute('data-license');
-                showDetailsModal(licensePlate);
+                const plate = this.getAttribute('data-plate');
+                showComparisonDetailsModal(plate);
             });
         });
-        
-        document.querySelectorAll('.resolve-issue').forEach(button => {
+
+        document.querySelectorAll('.resolve-comparison').forEach(button => {
             button.addEventListener('click', function() {
-                const licensePlate = this.getAttribute('data-license');
-                showResolveModal(licensePlate);
+                const plate = this.getAttribute('data-plate');
+                showResolveComparisonModal(plate);
             });
         });
     }
@@ -270,399 +333,173 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * CORREÇÃO: Mostrar modal de detalhes
      */
-    function showDetailsModal(licensePlate) {
-        const record = comparisonResults.all.find(r => 
-            r.licensePlate.toString().toLowerCase() === licensePlate.toString().toLowerCase()
-        );
+    function showComparisonDetailsModal(licensePlate) {
+        const comparison = comparisonResults.all.find(c => c.licensePlate === licensePlate);
         
-        if (!record) {
-            console.error('❌ Registro não encontrado:', licensePlate);
+        if (!comparison) {
+            alert('Comparação não encontrada!');
             return;
         }
-        
-        const modalBody = document.getElementById('details-modal-body');
+
+        const modalBody = document.getElementById('comparison-details-modal-body');
         if (!modalBody) {
             console.error('❌ Modal de detalhes não encontrado');
             return;
         }
-        
-        modalBody.innerHTML = `
-            <h4>Matrícula: ${record.licensePlate}</h4>
-            <p><strong>Status:</strong> ${getStatusText(record.status)}</p>
-            ${record.resolution ? `<p><strong>Resolução:</strong> ${record.resolution}</p>` : ''}
+
+        modalBody.innerHTML = '';
+
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <h4>Comparação: ${comparison.licensePlate}</h4>
+            <p><strong>Status:</strong> ${getStatusText(comparison.status)}</p>
             
-            ${record.boRecord ? `
-                <h4 class="mt-20">Detalhes do Back Office</h4>
-                <table class="table">
-                    <tr><th>Alocação</th><td>${record.boRecord.alocation || 'N/A'}</td></tr>
-                    <tr><th>Preço Booking</th><td>${record.boRecord.bookingPrice || 'N/A'} €</td></tr>
-                    <tr><th>Marca</th><td>${record.boRecord.parkBrand || 'N/A'}</td></tr>
-                </table>
-            ` : ''}
+            <div class="comparison-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Dados Odoo</h5>
+                        ${comparison.odooRecord ? `
+                            <table class="table table-sm">
+                                <tr><th>Preço Booking</th><td>${comparison.odooRecord.bookingPrice} €</td></tr>
+                                <tr><th>Marca</th><td>${comparison.odooRecord.parkBrand}</td></tr>
+                                <tr><th>Condutor</th><td>${comparison.odooRecord.condutorEntrega || 'N/A'}</td></tr>
+                                <tr><th>Check Out</th><td>${window.DateUtils ? window.DateUtils.formatForDisplay(comparison.odooRecord.checkOut) : comparison.odooRecord.checkOut}</td></tr>
+                            </table>
+                        ` : '<p class="text-muted">Não encontrado no Odoo</p>'}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Dados Back Office</h5>
+                        ${comparison.boRecord ? `
+                            <table class="table table-sm">
+                                <tr><th>Preço Booking</th><td>${comparison.boRecord.bookingPrice} €</td></tr>
+                                <tr><th>Marca</th><td>${comparison.boRecord.parkBrand}</td></tr>
+                                <tr><th>Condutor</th><td>${comparison.boRecord.condutorEntrega || 'N/A'}</td></tr>
+                                <tr><th>Check Out</th><td>${window.DateUtils ? window.DateUtils.formatForDisplay(comparison.boRecord.checkOut) : comparison.boRecord.checkOut}</td></tr>
+                            </table>
+                        ` : '<p class="text-muted">Não encontrado no Back Office</p>'}
+                    </div>
+                </div>
+            </div>
             
-            ${record.odooRecord ? `
-                <h4 class="mt-20">Detalhes do Odoo</h4>
-                <table class="table">
-                    <tr><th>Preço Booking</th><td>${record.odooRecord.bookingPrice || 'N/A'} €</td></tr>
-                    <tr><th>Marca</th><td>${record.odooRecord.parkBrand || 'N/A'}</td></tr>
-                </table>
-            ` : ''}
-            
-            ${record.inconsistencies && record.inconsistencies.length > 0 ? `
-                <h4 class="mt-20">Inconsistências</h4>
-                <ul>
-                    ${record.inconsistencies.map(inc => {
-                        if (inc === 'bookingPrice') {
-                            return `<li>Preço de Booking: ${record.bookingPriceBO} € (BO) vs ${record.bookingPriceOdoo} € (Odoo)</li>`;
-                        } else if (inc === 'parkBrand') {
-                            return `<li>Marca: ${record.parkBrand} (BO) vs ${record.parkBrandOdoo} (Odoo)</li>`;
-                        }
-                        return `<li>${inc}</li>`;
-                    }).join('')}
-                </ul>
+            ${comparison.inconsistencies.length > 0 ? `
+                <div class="mt-20">
+                    <h5>Inconsistências Encontradas</h5>
+                    <ul>
+                        ${comparison.inconsistencies.map(inc => `<li>${getInconsistencyDescription(inc)}</li>`).join('')}
+                    </ul>
+                </div>
             ` : ''}
         `;
-        
-        document.getElementById('details-modal-overlay').style.display = 'flex';
+
+        modalBody.appendChild(content);
+        document.getElementById('comparison-details-modal-overlay').style.display = 'flex';
     }
 
     /**
-     * CORREÇÃO: Mostrar modal de resolução
+     * Funções auxiliares
      */
-    function showResolveModal(licensePlate) {
-        const record = comparisonResults.all.find(r => 
-            r.licensePlate.toString().toLowerCase() === licensePlate.toString().toLowerCase()
-        );
-        
-        if (!record) {
-            console.error('❌ Registro não encontrado para resolução:', licensePlate);
-            return;
-        }
-        
-        const modalBody = document.getElementById('edit-modal-body');
-        if (!modalBody) {
-            console.error('❌ Modal de resolução não encontrado');
-            return;
-        }
-        
-        modalBody.innerHTML = '';
-        
-        const form = document.createElement('form');
-        form.id = 'resolve-form';
-        
-        if (record.status === 'inconsistent') {
-            form.innerHTML = `
-                <p>Resolve as inconsistências para <strong>${record.licensePlate}</strong>:</p>
-                
-                <div class="form-group">
-                    <label class="form-label">Escolhe a fonte de dados:</label>
-                    <div>
-                        <input type="radio" id="prefer-backoffice" name="data-source" value="backoffice" checked>
-                        <label for="prefer-backoffice">Usar dados do Back Office</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="prefer-odoo" name="data-source" value="odoo">
-                        <label for="prefer-odoo">Usar dados do Odoo</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="prefer-custom" name="data-source" value="custom">
-                        <label for="prefer-custom">Personalizar</label>
-                    </div>
-                </div>
-                
-                <div id="custom-fields" class="hidden">
-                    ${record.inconsistencies.includes('bookingPrice') ? `
-                        <div class="form-group">
-                            <label class="form-label">Preço de Booking:</label>
-                            <input type="number" class="form-control" id="custom-booking-price" value="${record.bookingPriceBO}" step="0.01">
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Observações:</label>
-                    <textarea class="form-control" id="resolution-notes" rows="3"></textarea>
-                </div>
-            `;
-        } else if (record.status.includes('missing')) {
-            form.innerHTML = `
-                <p>Resolve o problema para <strong>${record.licensePlate}</strong> ${record.status === 'missing_in_odoo' ? 'ausente no Odoo' : 'ausente no Back Office'}:</p>
-                
-                <div class="form-group">
-                    <label class="form-label">Escolhe uma ação:</label>
-                    <div>
-                        <input type="radio" id="action-include" name="missing-action" value="include" checked>
-                        <label for="action-include">Incluir o registro</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="action-ignore" name="missing-action" value="ignore">
-                        <label for="action-ignore">Ignorar</label>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Observações:</label>
-                    <textarea class="form-control" id="resolution-notes" rows="3"></textarea>
-                </div>
-            `;
-        }
-        
-        modalBody.appendChild(form);
-        
-        // Eventos para campos personalizados
-        const radioButtons = form.querySelectorAll('input[name="data-source"]');
-        const customFields = form.querySelector('#custom-fields');
-        
-        if (radioButtons.length > 0 && customFields) {
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (this.value === 'custom') {
-                        customFields.classList.remove('hidden');
-                    } else {
-                        customFields.classList.add('hidden');
-                    }
-                });
-            });
-        }
-        
-        // Configurar botão de salvar
-        const saveButton = document.getElementById('save-resolution-btn');
-        if (saveButton) {
-            saveButton.onclick = function() {
-                resolveIssue(record);
-            };
-        }
-        
-        document.getElementById('edit-modal-overlay').style.display = 'flex';
-    }
-
-    /**
-     * CORREÇÃO: Resolver inconsistência
-     */
-    async function resolveIssue(record) {
-        try {
-            console.log('🔧 Resolvendo inconsistência:', record.licensePlate);
-            
-            if (record.status === 'inconsistent') {
-                const dataSource = document.querySelector('input[name="data-source"]:checked')?.value;
-                const notes = document.getElementById('resolution-notes')?.value || '';
-                
-                if (!dataSource) {
-                    if (window.showNotification) {
-                        window.showNotification('Por favor, seleciona uma fonte de dados.', 'warning');
-                    }
-                    return;
-                }
-                
-                if (dataSource === 'backoffice') {
-                    record.resolution = 'use_backoffice';
-                    record.resolutionNotes = notes;
-                    
-                    if (record.inconsistencies.includes('bookingPrice')) {
-                        record.odooRecord.bookingPrice = record.boRecord.bookingPrice;
-                        record.bookingPriceOdoo = record.boRecord.bookingPrice;
-                    }
-                    
-                    if (record.inconsistencies.includes('parkBrand')) {
-                        record.odooRecord.parkBrand = record.boRecord.parkBrand;
-                        record.parkBrandOdoo = record.boRecord.parkBrand;
-                    }
-                    
-                } else if (dataSource === 'odoo') {
-                    record.resolution = 'use_odoo';
-                    record.resolutionNotes = notes;
-                    
-                    if (record.inconsistencies.includes('bookingPrice')) {
-                        record.boRecord.bookingPrice = record.odooRecord.bookingPrice;
-                        record.bookingPriceBO = record.odooRecord.bookingPrice;
-                    }
-                    
-                    if (record.inconsistencies.includes('parkBrand')) {
-                        record.boRecord.parkBrand = record.odooRecord.parkBrand;
-                        record.parkBrand = record.odooRecord.parkBrand;
-                    }
-                    
-                } else if (dataSource === 'custom') {
-                    record.resolution = 'use_custom';
-                    record.resolutionNotes = notes;
-                    
-                    if (record.inconsistencies.includes('bookingPrice')) {
-                        const customPrice = parseFloat(document.getElementById('custom-booking-price')?.value || 0);
-                        record.boRecord.bookingPrice = customPrice;
-                        record.odooRecord.bookingPrice = customPrice;
-                        record.bookingPriceBO = customPrice;
-                        record.bookingPriceOdoo = customPrice;
-                    }
-                }
-                
-                moveRecordToValid(record);
-                
-            } else if (record.status.includes('missing')) {
-                const action = document.querySelector('input[name="missing-action"]:checked')?.value;
-                const notes = document.getElementById('resolution-notes')?.value || '';
-                
-                if (!action) {
-                    if (window.showNotification) {
-                        window.showNotification('Por favor, seleciona uma ação.', 'warning');
-                    }
-                    return;
-                }
-                
-                if (action === 'include') {
-                    record.resolution = 'include';
-                    record.resolutionNotes = notes;
-                    
-                    if (record.status === 'missing_in_odoo') {
-                        record.odooRecord = {
-                            ID: 'AUTO_' + Date.now(),
-                            licensePlate: record.licensePlate,
-                            bookingPrice: record.boRecord.bookingPrice,
-                            parkBrand: record.boRecord.parkBrand,
-                            status: 'Auto-created'
-                        };
-                        record.bookingPriceOdoo = record.boRecord.bookingPrice;
-                    } else {
-                        record.boRecord = {
-                            licensePlate: record.licensePlate,
-                            alocation: 'AUTO_' + Date.now(),
-                            bookingPrice: record.odooRecord.bookingPrice,
-                            parkBrand: record.odooRecord.parkBrand,
-                            status: 'Auto-created'
-                        };
-                        record.alocation = record.boRecord.alocation;
-                        record.bookingPriceBO = record.odooRecord.bookingPrice;
-                    }
-                    
-                    moveRecordToValid(record);
-                    
-                } else if (action === 'ignore') {
-                    record.resolution = 'ignore';
-                    record.resolutionNotes = notes;
-                    moveRecordToValid(record);
-                }
-            }
-            
-            // Fechar modal
-            document.getElementById('edit-modal-overlay').style.display = 'none';
-            
-            // Atualizar interface
-            renderComparisonTable(comparisonResults.all);
-            updateCounters();
-            updateValidateButton();
-            
-            if (window.showNotification) {
-                window.showNotification('Inconsistência resolvida com sucesso!', 'success');
-            }
-            
-        } catch (error) {
-            console.error('❌ Erro ao resolver inconsistência:', error);
-            if (window.showNotification) {
-                window.showNotification('Erro ao resolver inconsistência: ' + error.message, 'error');
-            }
-        }
-    }
-
-    /**
-     * Mover registro para válidos
-     */
-    function moveRecordToValid(record) {
-        if (record.status === 'inconsistent') {
-            comparisonResults.inconsistent = comparisonResults.inconsistent.filter(r => 
-                r.licensePlate.toString().toLowerCase() !== record.licensePlate.toString().toLowerCase()
-            );
-        } else if (record.status.includes('missing')) {
-            comparisonResults.missing = comparisonResults.missing.filter(r => 
-                r.licensePlate.toString().toLowerCase() !== record.licensePlate.toString().toLowerCase()
-            );
-        }
-        
-        record.status = 'valid';
-        
-        if (!comparisonResults.valid.some(r => 
-            r.licensePlate.toString().toLowerCase() === record.licensePlate.toString().toLowerCase()
-        )) {
-            comparisonResults.valid.push(record);
-        }
-    }
-
-    function updateCounters() {
-        if (inconsistencyCountElement) inconsistencyCountElement.textContent = comparisonResults.inconsistent.length;
-        if (missingCountElement) missingCountElement.textContent = comparisonResults.missing.length;
-    }
-
-    function updateValidateButton() {
-        const allResolved = comparisonResults.inconsistent.length === 0 && 
-                           comparisonResults.missing.length === 0;
-        
-        if (validateComparisonBtn) {
-            validateComparisonBtn.disabled = !allResolved;
-        }
-    }
-
     function getStatusText(status) {
         switch (status) {
             case 'valid': return 'Válido';
             case 'inconsistent': return 'Inconsistente';
-            case 'missing_in_odoo': return 'Ausente no Odoo';
-            case 'missing_in_backoffice': return 'Ausente no Back Office';
+            case 'missing': return 'Em Falta';
             default: return status;
         }
     }
 
-    // Eventos para botões de filtro
+    function getInconsistenciesText(inconsistencies) {
+        if (inconsistencies.length === 0) return 'Nenhuma';
+        return inconsistencies.map(inc => getInconsistencyDescription(inc)).join(', ');
+    }
+
+    function getInconsistencyDescription(inconsistency) {
+        switch (inconsistency) {
+            case 'booking_price': return 'Preço diferente';
+            case 'park_brand': return 'Marca diferente';
+            case 'condutor_entrega': return 'Condutor diferente';
+            case 'check_out': return 'Data checkout diferente';
+            case 'missing_in_odoo': return 'Ausente no Odoo';
+            case 'missing_in_backoffice': return 'Ausente no Back Office';
+            default: return inconsistency;
+        }
+    }
+
+    // Eventos de filtros
     if (showAllBtn) {
         showAllBtn.addEventListener('click', function() {
             renderComparisonTable(comparisonResults.all);
+            updateFilterButtons(this);
         });
     }
 
     if (showMissingBtn) {
         showMissingBtn.addEventListener('click', function() {
             renderComparisonTable(comparisonResults.missing);
+            updateFilterButtons(this);
         });
     }
 
     if (showInconsistentBtn) {
         showInconsistentBtn.addEventListener('click', function() {
             renderComparisonTable(comparisonResults.inconsistent);
+            updateFilterButtons(this);
         });
     }
 
-    // Evento para botão de validação
+    function updateFilterButtons(activeButton) {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        activeButton.classList.add('active');
+    }
+
+    // CORREÇÃO: Botão "Validar e Avançar"
     if (validateComparisonBtn) {
         validateComparisonBtn.addEventListener('click', function() {
-            // Atualizar dados globais
-            if (window.fileProcessor) {
-                window.fileProcessor.setOdooData(comparisonResults.all.map(r => r.odooRecord).filter(Boolean));
-                window.fileProcessor.setBackOfficeData(comparisonResults.all.map(r => r.boRecord).filter(Boolean));
-            }
+            console.log('🚀 Validando comparação e avançando...');
             
-            // Mudar para aba de validação
-            const validateTab = document.querySelector('.nav-tab[data-tab="validate"]');
-            if (validateTab && window.changeTab) {
-                window.changeTab(validateTab);
+            if (comparisonResults.all.length === 0) {
+                alert('Nenhum dado para validar!');
+                return;
             }
-            
-            if (window.showNotification) {
-                window.showNotification('Dados sincronizados! Procede para a validação de caixa.', 'success');
+
+            // Preparar dados para validação de caixa
+            if (window.validator && window.validator.initCaixaValidation) {
+                console.log('✅ Passando dados para validação de caixa');
+                
+                // Mostrar notificação
+                if (window.showNotification) {
+                    window.showNotification('Dados validados! Prosseguindo para validação de caixa...', 'success');
+                }
+                
+                // Mudar para aba de validação
+                const validationTab = document.querySelector('.nav-tab[data-tab="validation"]');
+                if (validationTab && window.changeTab) {
+                    window.changeTab(validationTab);
+                }
+            } else {
+                console.warn('⚠️ Sistema de validação não disponível');
+                alert('Sistema de validação não está disponível. Verifique se todos os módulos foram carregados.');
             }
         });
     }
 
-    // Eventos para modais
-    document.querySelectorAll('.modal-close, .modal-close-btn').forEach(element => {
-        element.addEventListener('click', function() {
-            document.querySelectorAll('.modal-overlay').forEach(modal => {
-                modal.style.display = 'none';
-            });
+    // Fechar modais
+    document.querySelectorAll('.modal-close').forEach(button => {
+        button.addEventListener('click', function() {
+            this.closest('.modal-overlay').style.display = 'none';
         });
     });
 
-    // Exportar para uso global
+    // Exportar funções
     window.comparator = {
+        compareData: compareData,
         getResults: () => comparisonResults,
-        resolveIssue: resolveIssue
+        normalizeBrand: normalizeBrand,
+        brandsMatch: brandsMatch
     };
 
-    console.log('✅ Comparator corrigido carregado!');
+    console.log('✅ Comparador corrigido carregado!');
 });
+
