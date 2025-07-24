@@ -1,309 +1,382 @@
-// init-fixes.js - Script de inicialização com todas as correções
-console.log('🔧 Aplicando todas as correções do sistema...');
+// init-fixes.js - Script de inicialização com correções principais
+console.log('🚀 Iniciando correções principais do sistema...');
 
-// ===== CORREÇÃO 1: FORMATAÇÃO DE DATAS =====
-window.DateUtils = {
-    formatForPostgreSQL(dateValue) {
-        if (!dateValue) return null;
-        
-        try {
-            let dateObj = this.parseDate(dateValue);
-            if (!dateObj || isNaN(dateObj.getTime())) {
-                return null;
-            }
-            
-            return dateObj.toISOString().slice(0, 19).replace('T', ' ');
-        } catch (error) {
-            console.error('❌ Erro ao formatar data para PostgreSQL:', error);
-            return null;
-        }
-    },
+/**
+ * CORREÇÃO: Sistema de inicialização melhorado
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Aplicando correções de inicialização...');
 
-    formatForDisplay(dateValue) {
-        if (!dateValue) return 'N/A';
-        
-        try {
-            let dateObj = this.parseDate(dateValue);
-            if (!dateObj || isNaN(dateObj.getTime())) {
-                return 'Data Inválida';
-            }
-            
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const year = dateObj.getFullYear();
-            const hours = String(dateObj.getHours()).padStart(2, '0');
-            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-            
-            return `${day}/${month}/${year} ${hours}:${minutes}`;
-        } catch (error) {
-            console.error('❌ Erro ao formatar data:', error);
-            return 'Data Inválida';
-        }
-    },
-
-    parseDate(dateValue) {
-        if (!dateValue) return null;
-        
-        try {
-            if (dateValue instanceof Date) {
-                return isNaN(dateValue.getTime()) ? null : dateValue;
-            }
-            
-            if (typeof dateValue === 'number' || !isNaN(Number(dateValue))) {
-                const timestamp = typeof dateValue === 'number' ? dateValue : Number(dateValue);
-                const dateObj = timestamp > 10000000000 ? new Date(timestamp) : new Date(timestamp * 1000);
-                return isNaN(dateObj.getTime()) ? null : dateObj;
-            }
-            
-            if (typeof dateValue === 'string') {
-                if (dateValue.includes('/')) {
-                    const cleanDate = dateValue.replace(/,/g, ' ').trim();
-                    const parts = cleanDate.split(/[\/\s:]/);
-                    
-                    if (parts.length >= 3) {
-                        const day = parseInt(parts[0], 10);
-                        const month = parseInt(parts[1], 10) - 1;
-                        const year = parseInt(parts[2], 10);
-                        const hour = parts.length > 3 ? parseInt(parts[3], 10) : 0;
-                        const minute = parts.length > 4 ? parseInt(parts[4], 10) : 0;
-                        const second = parts.length > 5 ? parseInt(parts[5], 10) : 0;
-                        
-                        const dateObj = new Date(year, month, day, hour, minute, second);
-                        return isNaN(dateObj.getTime()) ? null : dateObj;
-                    }
-                }
-                
-                const dateObj = new Date(dateValue);
-                return isNaN(dateObj.getTime()) ? null : dateObj;
-            }
-            
-            return null;
-        } catch (error) {
-            console.error('❌ Erro ao fazer parse da data:', error);
-            return null;
-        }
-    },
-
-    isValidDate(dateValue) {
-        const parsed = this.parseDate(dateValue);
-        return parsed !== null && !isNaN(parsed.getTime());
-    }
-};
-
-// ===== CORREÇÃO 2: NORMALIZAÇÃO DE MARCAS =====
-window.BrandUtils = {
-    normalizeBrand(brandName) {
-        if (!brandName) return '';
-        
-        let normalized = String(brandName).toLowerCase().trim();
-        
-        // Remover palavras relacionadas a estacionamento
-        normalized = normalized
-            .replace(/\s+parking\b/gi, '')
-            .replace(/\s+estacionamento\b/gi, '')
-            .replace(/\s+park\b/gi, '')
-            .replace(/\s+parque\b/gi, '');
-        
-        // Remover cidades portuguesas
-        const cities = [
-            'lisboa', 'lisbon', 'porto', 'oporto', 'coimbra', 'braga', 
-            'aveiro', 'faro', 'setúbal', 'évora', 'leiria', 'viseu',
-            'santarém', 'castelo branco', 'beja', 'portalegre', 'guarda',
-            'viana do castelo', 'vila real', 'bragança'
-        ];
-        
-        for (const city of cities) {
-            normalized = normalized.replace(new RegExp(`\\s+${city}$`, 'gi'), '');
-            normalized = normalized.replace(new RegExp(`^${city}\\s+`, 'gi'), '');
-            normalized = normalized.replace(new RegExp(`\\s+${city}\\s+`, 'gi'), ' ');
-        }
-        
-        return normalized.trim().toUpperCase();
-    },
-
-    brandsMatch(brand1, brand2) {
-        const norm1 = this.normalizeBrand(brand1);
-        const norm2 = this.normalizeBrand(brand2);
-        
-        console.log(`🔍 Comparação: "${brand1}" -> "${norm1}" vs "${brand2}" -> "${norm2}"`);
-        return norm1 === norm2;
-    }
-};
-
-// ===== CORREÇÃO 3: VALIDAÇÕES DE PAGAMENTO =====
-window.PaymentValidation = {
-    validatePayment(delivery, validatedRecord) {
-        const errors = [];
-        const method = (delivery.paymentMethod || '').toLowerCase();
-        
-        // Validação "no pay"
-        if (method === 'no pay') {
-            const campaignPayFalse = validatedRecord?.boRecord?.campaignPay === false || 
-                                    validatedRecord?.boRecord?.campaignPay === 'false';
-            
-            if (!campaignPayFalse) {
-                errors.push({
-                    type: 'permanent',
-                    code: 'no_pay_without_campaign_pay_false',
-                    message: 'Pagamento "No Pay" mas campaignPay não é false no Back Office'
-                });
-            }
-        }
-        
-        // Validação "online"
-        if (method === 'online') {
-            const hasOnlineTrue = validatedRecord?.boRecord?.hasOnlinePayment === true || 
-                                 validatedRecord?.boRecord?.hasOnlinePayment === 'true';
-            
-            if (!hasOnlineTrue) {
-                errors.push({
-                    type: 'permanent',
-                    code: 'online_without_online_payment_true',
-                    message: 'Pagamento "Online" mas hasOnlinePayment não é true no Back Office'
-                });
-            }
-        }
-        
-        return errors;
-    }
-};
-
-// ===== CORREÇÃO 4: GESTÃO DE NOTIFICAÇÕES =====
-window.showNotification = function(message, type = 'success', duration = 3000) {
-    // Criar container se não existir
-    let container = document.getElementById('notifications-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notifications-container';
-        container.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            pointer-events: none;
-        `;
-        document.body.appendChild(container);
-    }
+    // CORREÇÃO 1: Garantir que todos os módulos estão carregados
+    const requiredModules = ['DateUtils', 'BrandUtils', 'PaymentValidation', 'Utils'];
+    const missingModules = requiredModules.filter(module => !window[module]);
     
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#dc3545' : '#ffc107'};
-        color: ${type === 'warning' ? '#000' : '#fff'};
-        padding: 15px 20px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-        font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        opacity: 0;
-        transform: translateX(100%);
-        transition: all 0.3s ease;
-        pointer-events: auto;
-        cursor: pointer;
-    `;
-    notification.textContent = message;
-    
-    container.appendChild(notification);
-    
-    // Animar entrada
+    if (missingModules.length > 0) {
+        console.warn('⚠️ Módulos em falta:', missingModules);
+    } else {
+        console.log('✅ Todos os módulos utilitários carregados');
+    }
+
+    // CORREÇÃO 2: Inicializar sistema de notificações
+    if (!window.showNotification) {
+        console.warn('⚠️ Sistema de notificações não encontrado, criando versão básica...');
+        window.showNotification = function(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+            alert(message);
+        };
+    }
+
+    // CORREÇÃO 3: Verificar e corrigir elementos da interface
+    fixInterfaceElements();
+
+    // CORREÇÃO 4: Aplicar correções específicas de cada módulo
     setTimeout(() => {
-        notification.style.opacity = '1';
-        notification.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // Remover ao clicar
-    notification.addEventListener('click', () => {
-        notification.style.opacity = '0';
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => container.removeChild(notification), 300);
+        applyModuleSpecificFixes();
+    }, 500);
+
+    // CORREÇÃO 5: Configurar handlers globais de erro
+    setupGlobalErrorHandlers();
+
+    // CORREÇÃO 6: Verificar conectividade com Supabase
+    checkSupabaseConnection();
+
+    console.log('✅ Correções de inicialização aplicadas!');
+});
+
+/**
+ * CORREÇÃO: Corrigir elementos da interface
+ */
+function fixInterfaceElements() {
+    console.log('🔧 Verificando elementos da interface...');
+
+    // CORREÇÃO: Garantir que botões críticos existem e são visíveis
+    const criticalButtons = [
+        'validate-comparison-btn',
+        'export-btn',
+        'add-caixa-btn',
+        'close-caixa-btn'
+    ];
+
+    criticalButtons.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            // Remover classe hidden se existir
+            button.classList.remove('hidden');
+            
+            // CORREÇÃO: Botão "Validar e Avançar" sempre visível quando há dados
+            if (buttonId === 'validate-comparison-btn') {
+                button.style.display = 'inline-block';
+                console.log('✅ Botão "Validar e Avançar" corrigido');
+            }
+        } else {
+            console.warn(`⚠️ Botão crítico não encontrado: ${buttonId}`);
+        }
     });
-    
-    // Auto-remover
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    container.removeChild(notification);
-                }
-            }, 300);
-        }
-    }, duration);
-};
 
-// ===== CORREÇÃO 5: DEBUGGER MELHORADO =====
-window.CaixaDebugger = {
-    logState() {
-        console.log('🔍 Estado atual do sistema:', {
+    // CORREÇÃO: Verificar tabelas críticas
+    const criticalTables = [
+        'comparison-table',
+        'deliveries-table'
+    ];
+
+    criticalTables.forEach(tableId => {
+        const table = document.getElementById(tableId);
+        if (!table) {
+            console.warn(`⚠️ Tabela crítica não encontrada: ${tableId}`);
+        } else {
+            // Garantir que tbody existe
+            if (!table.querySelector('tbody')) {
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+                console.log(`✅ Tbody adicionado à tabela ${tableId}`);
+            }
+        }
+    });
+
+    // CORREÇÃO: Verificar contadores
+    const counters = [
+        'odoo-count',
+        'backoffice-count',
+        'inconsistency-count',
+        'missing-count',
+        'delivery-count'
+    ];
+
+    counters.forEach(counterId => {
+        const counter = document.getElementById(counterId);
+        if (counter && counter.textContent === '') {
+            counter.textContent = '0';
+        }
+    });
+}
+
+/**
+ * CORREÇÃO: Aplicar correções específicas de cada módulo
+ */
+function applyModuleSpecificFixes() {
+    console.log('🔧 Aplicando correções específicas dos módulos...');
+
+    // CORREÇÃO: File Processor - Verificação de duplicados
+    if (window.fileProcessor) {
+        console.log('✅ File Processor encontrado, aplicando correções...');
+        
+        // Sobrescrever função de verificação de duplicados se necessário
+        const originalCheckDuplicates = window.fileProcessor.checkForDuplicates;
+        if (originalCheckDuplicates) {
+            window.fileProcessor.checkForDuplicates = function(newData, existingData) {
+                console.log('🔍 Verificando duplicados com correção...');
+                
+                if (!Array.isArray(newData) || !Array.isArray(existingData)) {
+                    return { duplicates: [], unique: newData || [] };
+                }
+
+                const duplicates = [];
+                const unique = [];
+
+                newData.forEach(newRecord => {
+                    const isDuplicate = existingData.some(existing => {
+                        const plateMatch = window.Utils ? 
+                            window.Utils.normalizeLicensePlate(newRecord.licensePlate) === 
+                            window.Utils.normalizeLicensePlate(existing.licensePlate) :
+                            newRecord.licensePlate === existing.licensePlate;
+                        
+                        const driverMatch = (newRecord.condutorEntrega || '').toLowerCase() === 
+                                          (existing.condutorEntrega || '').toLowerCase();
+                        
+                        return plateMatch && driverMatch;
+                    });
+
+                    if (isDuplicate) {
+                        duplicates.push(newRecord);
+                    } else {
+                        unique.push(newRecord);
+                    }
+                });
+
+                console.log(`✅ Verificação de duplicados: ${duplicates.length} duplicados, ${unique.length} únicos`);
+                return { duplicates, unique };
+            };
+        }
+    }
+
+    // CORREÇÃO: Comparator - Normalização de marcas
+    if (window.comparator && window.BrandUtils) {
+        console.log('✅ Comparator encontrado, aplicando correções de marcas...');
+        
+        // Garantir que usa a função corrigida de normalização
+        if (window.comparator.normalizeBrand !== window.BrandUtils.normalizeBrand) {
+            window.comparator.normalizeBrand = window.BrandUtils.normalizeBrand;
+            window.comparator.brandsMatch = window.BrandUtils.brandsMatch;
+            console.log('✅ Funções de marca atualizadas no comparator');
+        }
+    }
+
+    // CORREÇÃO: Validator - Sistema de IDs e inconsistências permanentes
+    if (window.validator) {
+        console.log('✅ Validator encontrado, aplicando correções...');
+        
+        // Verificar se tem função de validação de pagamentos
+        if (!window.validator.validatePayment && window.PaymentValidation) {
+            window.validator.validatePayment = window.PaymentValidation.validatePayment;
+            console.log('✅ Validação de pagamentos adicionada ao validator');
+        }
+    }
+
+    // CORREÇÃO: Dashboard - Formatação de datas
+    if (window.dashboard && window.DateUtils) {
+        console.log('✅ Dashboard encontrado, aplicando correções de data...');
+        
+        // Atualizar data atual se elemento existe
+        const currentDateElement = document.getElementById('current-date');
+        if (currentDateElement) {
+            currentDateElement.textContent = window.DateUtils.getCurrentDateTime();
+        }
+    }
+}
+
+/**
+ * CORREÇÃO: Configurar handlers globais de erro
+ */
+function setupGlobalErrorHandlers() {
+    console.log('🛡️ Configurando handlers globais de erro...');
+
+    // Handler para erros JavaScript não capturados
+    window.addEventListener('error', function(event) {
+        console.error('❌ Erro JavaScript:', event.error);
+        
+        if (window.showNotification) {
+            window.showNotification(
+                'Erro inesperado detectado. Verifique o console para detalhes.',
+                'error'
+            );
+        }
+    });
+
+    // Handler para promises rejeitadas não capturadas
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('❌ Promise rejeitada:', event.reason);
+        
+        if (window.showNotification) {
+            window.showNotification(
+                'Erro de operação assíncrona. Verifique o console para detalhes.',
+                'error'
+            );
+        }
+    });
+
+    // CORREÇÃO: Handler específico para erros do Supabase
+    const originalSupabaseError = console.error;
+    console.error = function(...args) {
+        const message = args.join(' ');
+        
+        if (message.includes('supabase') || message.includes('postgresql')) {
+            console.warn('🔍 Erro relacionado ao Supabase detectado:', message);
+            
+            if (window.showNotification && message.includes('authentication')) {
+                window.showNotification(
+                    'Erro de autenticação com base de dados. Verifique a configuração.',
+                    'error'
+                );
+            }
+        }
+        
+        originalSupabaseError.apply(console, args);
+    };
+}
+
+/**
+ * CORREÇÃO: Verificar conectividade com Supabase
+ */
+function checkSupabaseConnection() {
+    console.log('🔗 Verificando conectividade com Supabase...');
+
+    if (typeof supabase !== 'undefined' && supabase) {
+        // Teste simples de conectividade
+        supabase
+            .from('cash_records')
+            .select('count', { count: 'exact', head: true })
+            .then(response => {
+                if (response.error) {
+                    console.warn('⚠️ Erro ao conectar com Supabase:', response.error.message);
+                    
+                    if (window.showNotification) {
+                        window.showNotification(
+                            'Problema de conectividade com a base de dados',
+                            'warning'
+                        );
+                    }
+                } else {
+                    console.log('✅ Conectividade com Supabase confirmada');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erro na verificação do Supabase:', error);
+            });
+    } else {
+        console.warn('⚠️ Cliente Supabase não encontrado');
+        
+        if (window.showNotification) {
+            window.showNotification(
+                'Cliente de base de dados não inicializado',
+                'warning'
+            );
+        }
+    }
+}
+
+/**
+ * CORREÇÃO: Função para reinicializar sistema se necessário
+ */
+function reinitializeSystem() {
+    console.log('🔄 Reinicializando sistema...');
+    
+    // Limpar caches se existirem
+    if (window.localStorage) {
+        const cacheKeys = Object.keys(localStorage).filter(key => 
+            key.startsWith('caixa_') || key.startsWith('multipark_')
+        );
+        
+        if (cacheKeys.length > 0) {
+            console.log('🗑️ Limpando cache:', cacheKeys);
+            cacheKeys.forEach(key => localStorage.removeItem(key));
+        }
+    }
+    
+    // Recarregar página se necessário
+    if (confirm('Reinicializar sistema? Isto irá recarregar a página.')) {
+        window.location.reload();
+    }
+}
+
+/**
+ * CORREÇÃO: Função de diagnóstico do sistema
+ */
+function runSystemDiagnostics() {
+    console.log('🔍 Executando diagnósticos do sistema...');
+    
+    const diagnostics = {
+        timestamp: new Date().toISOString(),
+        modules: {
             dateUtils: !!window.DateUtils,
             brandUtils: !!window.BrandUtils,
             paymentValidation: !!window.PaymentValidation,
+            utils: !!window.Utils,
             fileProcessor: !!window.fileProcessor,
             comparator: !!window.comparator,
             validator: !!window.validator,
             dashboard: !!window.dashboard,
-            exporter: !!window.exporter
-        });
-    },
+            exporter: !!window.exporter,
+            supabase: !!window.supabase
+        },
+        interface: {
+            validateButton: !!document.getElementById('validate-comparison-btn'),
+            exportButton: !!document.getElementById('export-btn'),
+            comparisonTable: !!document.getElementById('comparison-table'),
+            deliveriesTable: !!document.getElementById('deliveries-table')
+        },
+        errors: []
+    };
     
-    testDateParsing() {
-        const testDates = [
-            '24/07/2025 14:30:00',
-            '2025-07-24T14:30:00Z',
-            1721826600000,
-            new Date()
-        ];
-        
-        console.log('🧪 Teste de parsing de datas:');
-        testDates.forEach(date => {
-            const result = window.DateUtils.formatForDisplay(date);
-            console.log(`  ${date} -> ${result}`);
-        });
-    },
-    
-    testBrandMatching() {
-        const testBrands = [
-            ['RedPark', 'RedPark Lisboa'],
-            ['Estacionamento Central', 'Central Park'],
-            ['Porto Parking', 'Porto']
-        ];
-        
-        console.log('🧪 Teste de marcas:');
-        testBrands.forEach(([brand1, brand2]) => {
-            const match = window.BrandUtils.brandsMatch(brand1, brand2);
-            console.log(`  "${brand1}" vs "${brand2}" -> ${match ? '✅' : '❌'}`);
-        });
+    // Verificar erros comuns
+    if (!diagnostics.modules.supabase) {
+        diagnostics.errors.push('Cliente Supabase não inicializado');
     }
+    
+    if (!diagnostics.interface.validateButton) {
+        diagnostics.errors.push('Botão "Validar e Avançar" não encontrado');
+    }
+    
+    console.table(diagnostics.modules);
+    console.table(diagnostics.interface);
+    
+    if (diagnostics.errors.length > 0) {
+        console.warn('⚠️ Problemas encontrados:', diagnostics.errors);
+    } else {
+        console.log('✅ Todos os diagnósticos passaram');
+    }
+    
+    return diagnostics;
+}
+
+// CORREÇÃO: Exportar funções para uso global
+window.CaixaInitFixes = {
+    reinitializeSystem,
+    runSystemDiagnostics,
+    fixInterfaceElements,
+    applyModuleSpecificFixes,
+    checkSupabaseConnection
 };
 
-// ===== INICIALIZAÇÃO =====
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ Sistema de correções inicializado!');
-    
-    // Definir data atual
-    const currentDateElement = document.getElementById('current-date');
-    if (currentDateElement) {
-        const today = new Date();
-        currentDateElement.textContent = today.toLocaleDateString('pt-PT');
-    }
-    
-    // Testes rápidos
-    if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-        setTimeout(() => {
-            window.CaixaDebugger.logState();
-            console.log('🧪 Para testar o sistema, usa:');
-            console.log('  - window.CaixaDebugger.testDateParsing()');
-            console.log('  - window.CaixaDebugger.testBrandMatching()');
-            console.log('  - window.showNotification("Teste", "success")');
-        }, 1000);
-    }
-});
+// CORREÇÃO: Auto-executar diagnósticos em ambiente de desenvolvimento
+if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+    setTimeout(() => {
+        console.log('🧪 Ambiente de desenvolvimento detectado');
+        console.log('💡 Funções disponíveis:');
+        console.log('  - window.CaixaInitFixes.runSystemDiagnostics()');
+        console.log('  - window.CaixaInitFixes.reinitializeSystem()');
+        console.log('  - window.CaixaDebugger.logState() (se utils carregado)');
+    }, 2000);
+}
 
-// Compatibilidade com código existente
-window.formatDate = window.DateUtils.formatForDisplay;
-window.normalizeLicensePlate = function(plate) {
-    if (!plate) return '';
-    return String(plate).replace(/[\s\-\.\,\/\\\(\)\[\]\{\}\+\*\?\^\$\|]/g, '').toLowerCase();
-};
+console.log('🎯 Sistema de correções de inicialização carregado!');
 
-console.log('🎯 Todas as correções aplicadas!');
