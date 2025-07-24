@@ -16,12 +16,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
+    <!-- Debug Info (só visível no console) -->
+    <div id="debug-info" style="display: none;">
+        <p>Versão: 2.1.0</p>
+        <p>Última atualização: 24/07/2025</p>
+        <p>Debug: Ativo</p>
+    </div>
+
     <!-- Loading inicial -->
     <div id="app-loading" class="loading-overlay">
         <div class="loading-content">
             <div class="spinner"></div>
             <h3>Caixa Multipark</h3>
             <p>A inicializar aplicação...</p>
+            <div id="loading-status" style="margin-top: 15px; font-size: 12px; color: #666;">
+                A carregar módulos...
+            </div>
         </div>
     </div>
 
@@ -414,22 +424,69 @@
     </div>
 
     <!-- Scripts da aplicação na ordem correta para inicialização -->
-    <!-- 1. Configuração e utilitários primeiro -->
+    <!-- 1. Sistema de debug primeiro (para diagnosticar problemas) -->
+    <script src="js/debug-system.js"></script>
+    
+    <!-- 2. Configuração e utilitários -->
     <script src="js/config.js"></script>
     <script src="js/error-handler.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/notifications.js"></script>
     
-    <!-- 2. Integração Supabase -->
+    <!-- 3. Integração Supabase -->
     <script src="js/supabase-integration.js"></script>
     
-    <!-- 3. Sistemas principais -->
+    <!-- 4. Sistemas principais -->
     <script src="js/file-processor.js"></script>
     <script src="js/comparison-system.js"></script>
     <script src="js/validation-system.js"></script>
     <script src="js/dashboard.js"></script>
     
-    <!-- 4. Aplicação principal por último -->
+    <!-- 5. Aplicação principal por último -->
     <script src="js/app.js"></script>
+    
+    <!-- Script inline para mostrar progresso de carregamento -->
+    <script>
+        // Atualizar status de carregamento
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusEl = document.getElementById('loading-status');
+            if (statusEl) {
+                let step = 0;
+                const steps = [
+                    'A carregar configurações...',
+                    'A conectar ao Supabase...',
+                    'A inicializar módulos...',
+                    'A verificar sistema...',
+                    'A finalizar...'
+                ];
+                
+                const updateStatus = () => {
+                    if (step < steps.length) {
+                        statusEl.textContent = steps[step];
+                        step++;
+                        setTimeout(updateStatus, 800);
+                    } else {
+                        statusEl.textContent = 'Sistema pronto!';
+                    }
+                };
+                
+                setTimeout(updateStatus, 500);
+            }
+        });
+
+        // Debug quick access
+        window.addEventListener('keydown', (e) => {
+            // Ctrl+Shift+D para debug rápido
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                console.log('🔍 Executando diagnóstico rápido...');
+                if (window.quickCheck) {
+                    window.quickCheck();
+                } else {
+                    console.log('❌ Sistema de debug não disponível');
+                }
+            }
+        });
+    </script>
 </body>
 </html>
