@@ -337,7 +337,14 @@ window.CaixaDebugger = new CaixaDebugger();
 
 // Expor funções úteis para console
 window.testSystem = () => window.CaixaDebugger.runFullDiagnosis();
-window.quickCheck = () => window.CaixaDebugger.quickHealthCheck();
+window.quickCheck = () => {
+    if (window.CaixaDebugger && typeof window.CaixaDebugger.quickHealthCheck === 'function') {
+        return window.CaixaDebugger.quickHealthCheck();
+    } else {
+        console.warn('🔍 CaixaDebugger.quickHealthCheck não está disponível via quickCheck()');
+        return null;
+    }
+};
 window.testBrands = () => window.CaixaDebugger.testBrandMatching();
 
 // Auto-executar verificação após carregamento
@@ -346,10 +353,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Verificação de segurança antes de chamar o método
         if (window.CaixaDebugger && typeof window.CaixaDebugger.quickHealthCheck === 'function') {
             window.CaixaDebugger.quickHealthCheck();
-        } else if (typeof window.quickCheck === 'function') {
-            window.quickCheck();
         } else {
-            console.warn('🔍 CaixaDebugger.quickHealthCheck não está disponível');
+            console.warn('🔍 CaixaDebugger.quickHealthCheck não está disponível - sistema de debug limitado');
+            // Fazer uma verificação básica alternativa
+            console.log('🔍 Verificação básica: CaixaDebugger existe?', !!window.CaixaDebugger);
+            if (window.CaixaDebugger) {
+                console.log('🔍 Métodos disponíveis:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.CaixaDebugger)));
+            }
         }
     }, 2000); // Aguardar 2s para todos os módulos carregarem
 });
