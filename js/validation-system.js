@@ -55,44 +55,125 @@ class ValidationSystem {
     // ===== REGRAS DE VALIDAÇÃO =====
     
     initializeRules() {
-        // Regra: No Pay sem campanha
-        this.addRule('no_pay_without_campaign', {
-            name: 'No Pay sem Campanha',
-            description: 'Pagamento "no pay" deve ter campanha ativa',
-            severity: 'error',
+        // REGRA CRÍTICA: NO PAY - Inconsistência Permanente
+        this.addRule('no_pay_campaign_validation', {
+            name: 'NO PAY - Validação de Campanha',
+            description: 'Pagamento "NO PAY" deve ter campaign_pay = false',
+            severity: 'critical',
             isPermanent: true,
+            requiresApproval: true,
             check: (delivery, validatedRecord) => {
-                if (delivery.paymentMethod?.toLowerCase() === 'no pay') {
-                    const hasCampaign = validatedRecord?.boRecord?.campaign === 'true' || 
-                                      validatedRecord?.boRecord?.campaign === true ||
-                                      delivery.campaign === 'true' || 
-                                      delivery.campaign === true;
+                // Verificar se é pagamento NO PAY
+                const isNoPay = delivery.paymentMethod?.toLowerCase().includes('no pay') || 
+                               delivery.paymentMethod?.toLowerCase() === 'nopay';
+                
+                if (isNoPay) {
+                    console.log('🔍 Verificando NO PAY:', {
+                        licensePlate: delivery.licensePlate,
+                        paymentMethod: delivery.paymentMethod,
+                        validatedRecord: validatedRecord
+                    });
                     
-                    const hasCampaignPay = validatedRecord?.boRecord?.campaignPay === 'false' || 
-                                          validatedRecord?.boRecord?.campaignPay === false;
+                    // Verificar campaign_pay no Back Office
+                    const campaignPayBO = validatedRecord?.boRecord?.campaign_pay || 
+                                         validatedRecord?.boRecord?.campaignPay ||
+                                         validatedRecord?.campaign_pay ||
+                                         validatedRecord?.campaignPay;
                     
-                    return !hasCampaign || !hasCampaignPay;
+                    // Para NO PAY, campaign_pay deve ser false
+                    const isValidCampaignPay = campaignPayBO === 'false' || 
+                                              campaignPayBO === false || 
+                                              campaignPayBO === 'False' ||
+                                              campaignPayBO === 'FALSE';
+                    
+                    console.log('🔍 Campaign Pay Check:', {
+                        campaignPayBO,
+                        isValidCampaignPay,
+                        shouldBeFalse: true
+                    });
+                    
+                    // Se campaign_pay não for false, é inconsistência permanente
+                    return !isValidCampaignPay;
                 }
                 return false;
             },
-            getMessage: (delivery) => 'Cliente com método "no pay" sem campanha válida'
+            getMessage: (delivery, validatedRecord) => {
+                const campaignPayBO = validatedRecord?.boRecord?.campaign_pay || 
+                                     validatedRecord?.boRecord?.campaignPay ||
+                                     validatedRecord?.campaign_pay ||
+                                     validatedRecord?.campaignPay || 'indefinido';
+                
+                return `⚠️ INCONSISTÊNCIA PERMANENTE: Pagamento "NO PAY" com campaign_pay = "${campaignPayBO}" (deve ser "false")`;
+            },
+            getApprovalMessage: (delivery) => {
+                return `🚨 ATENÇÃO: Inconsistência permanente detectada!\n\n` +
+                       `Matrícula: ${delivery.licensePlate}\n` +
+                       `Método: ${delivery.paymentMethod}\n` +
+                       `Problema: campaign_pay não é "false"\n\n` +
+                       `Esta inconsistência NÃO desaparecerá mesmo após aprovação.\n` +
+                       `Desejas aprovar e continuar?`;
+            }
         });
         
-        // Regra: Online sem confirmação
-        this.addRule('online_without_confirmation', {
-            name: 'Online sem Confirmação',
-            description: 'Pagamento online deve ter confirmação',
-            severity: 'error',
+        // REGRA CRÍTICA: ONLINE - Inconsistência Permanente
+        this.addRule('online_payment_validation', {
+            name: 'ONLINE - Validação de Pagamento',
+            description: 'Pagamento "ONLINE" deve ter online_pay = true',
+            severity: 'critical',
             isPermanent: true,
+            requiresApproval: true,
             check: (delivery, validatedRecord) => {
-                if (delivery.paymentMethod?.toLowerCase() === 'online') {
-                    const hasOnlinePayment = validatedRecord?.boRecord?.hasOnlinePayment === 'true' || 
-                                           validatedRecord?.boRecord?.hasOnlinePayment === true;
-                    return !hasOnlinePayment;
+                // Verificar se é pagamento ONLINE
+                const isOnline = delivery.paymentMethod?.toLowerCase().includes('online') ||
+                                delivery.paymentMethod?.toLowerCase() === 'cartão' ||
+                                delivery.paymentMethod?.toLowerCase() === 'card';
+                
+                if (isOnline) {
+                    console.log('🔍 Verificando ONLINE:', {
+                        licensePlate: delivery.licensePlate,
+                        paymentMethod: delivery.paymentMethod,
+                        validatedRecord: validatedRecord
+                    });
+                    
+                    // Verificar online_pay no Back Office
+                    const onlinePayBO = validatedRecord?.boRecord?.online_pay || 
+                                       validatedRecord?.boRecord?.onlinePay ||
+                                       validatedRecord?.online_pay ||
+                                       validatedRecord?.onlinePay;
+                    
+                    // Para ONLINE, online_pay deve ser true
+                    const isValidOnlinePay = onlinePayBO === 'true' || 
+                                            onlinePayBO === true || 
+                                            onlinePayBO === 'True' ||
+                                            onlinePayBO === 'TRUE';
+                    
+                    console.log('🔍 Online Pay Check:', {
+                        onlinePayBO,
+                        isValidOnlinePay,
+                        shouldBeTrue: true
+                    });
+                    
+                    // Se online_pay não for true, é inconsistência permanente
+                    return !isValidOnlinePay;
                 }
                 return false;
             },
-            getMessage: (delivery) => 'Pagamento online sem confirmação no sistema'
+            getMessage: (delivery, validatedRecord) => {
+                const onlinePayBO = validatedRecord?.boRecord?.online_pay || 
+                                   validatedRecord?.boRecord?.onlinePay ||
+                                   validatedRecord?.online_pay ||
+                                   validatedRecord?.onlinePay || 'indefinido';
+                
+                return `⚠️ INCONSISTÊNCIA PERMANENTE: Pagamento "ONLINE" com online_pay = "${onlinePayBO}" (deve ser "true")`;
+            },
+            getApprovalMessage: (delivery) => {
+                return `🚨 ATENÇÃO: Inconsistência permanente detectada!\n\n` +
+                       `Matrícula: ${delivery.licensePlate}\n` +
+                       `Método: ${delivery.paymentMethod}\n` +
+                       `Problema: online_pay não é "true"\n\n` +
+                       `Esta inconsistência NÃO desaparecerá mesmo após aprovação.\n` +
+                       `Desejas aprovar e continuar?`;
+            }
         });
         
         // Regra: Diferença de preços
@@ -101,19 +182,20 @@ class ValidationSystem {
             description: 'Preços diferentes entre sistemas',
             severity: 'warning',
             isPermanent: false,
+            requiresApproval: false,
             check: (delivery, validatedRecord) => {
                 if (!validatedRecord) return false;
                 
                 const deliveryPrice = parseFloat(delivery.priceOnDelivery) || 0;
-                const bookingPriceBO = parseFloat(validatedRecord.bookingPriceBO) || 0;
-                const bookingPriceOdoo = parseFloat(validatedRecord.bookingPriceOdoo) || 0;
+                const bookingPriceBO = parseFloat(validatedRecord.priceBookingBO) || 0;
+                const bookingPriceOdoo = parseFloat(validatedRecord.priceBookingOdoo) || 0;
                 
                 return deliveryPrice !== bookingPriceBO || deliveryPrice !== bookingPriceOdoo;
             },
             getMessage: (delivery, validatedRecord) => {
                 const deliveryPrice = parseFloat(delivery.priceOnDelivery) || 0;
-                const bookingPriceBO = parseFloat(validatedRecord.bookingPriceBO) || 0;
-                const bookingPriceOdoo = parseFloat(validatedRecord.bookingPriceOdoo) || 0;
+                const bookingPriceBO = parseFloat(validatedRecord.priceBookingBO) || 0;
+                const bookingPriceOdoo = parseFloat(validatedRecord.priceBookingOdoo) || 0;
                 
                 return `Preço entrega: €${deliveryPrice.toFixed(2)} | BO: €${bookingPriceBO.toFixed(2)} | Odoo: €${bookingPriceOdoo.toFixed(2)}`;
             }
@@ -125,10 +207,40 @@ class ValidationSystem {
             description: 'Entrega sem registro correspondente',
             severity: 'error',
             isPermanent: false,
+            requiresApproval: false,
             check: (delivery, validatedRecord) => {
                 return !validatedRecord;
             },
             getMessage: (delivery) => 'Entrega sem registro correspondente nos sistemas'
+        });
+        
+        // Regra: Método de pagamento inconsistente
+        this.addRule('payment_method_mismatch', {
+            name: 'Método de Pagamento Inconsistente',
+            description: 'Método de pagamento diferente entre sistemas',
+            severity: 'warning',
+            isPermanent: false,
+            requiresApproval: false,
+            check: (delivery, validatedRecord) => {
+                if (!validatedRecord) return false;
+                
+                const deliveryMethod = delivery.paymentMethod?.toLowerCase() || '';
+                const boMethod = validatedRecord.paymentMethod?.toLowerCase() || '';
+                
+                // Normalizar métodos para comparação
+                const normalizeMethod = (method) => {
+                    if (method.includes('no pay') || method === 'nopay') return 'nopay';
+                    if (method.includes('online') || method.includes('cartão') || method.includes('card')) return 'online';
+                    if (method.includes('numerário') || method.includes('cash')) return 'numerario';
+                    if (method.includes('multibanco') || method.includes('mb')) return 'multibanco';
+                    return method;
+                };
+                
+                return normalizeMethod(deliveryMethod) !== normalizeMethod(boMethod);
+            },
+            getMessage: (delivery, validatedRecord) => {
+                return `Método caixa: "${delivery.paymentMethod}" | Método BO: "${validatedRecord.paymentMethod}"`;
+            }
         });
     }
     
@@ -152,14 +264,49 @@ class ValidationSystem {
                 return;
             }
             
-            // Obter dados validados da comparação
-            const comparisonResults = window.comparator ? window.comparator.getResults() : null;
-            const validatedData = comparisonResults ? comparisonResults.all : [];
+            updateProcessing('A implementar fluxo correto...', 'Fluxo BD');
             
-            if (!validatedData || validatedData.length === 0) {
-                console.warn("Dados de comparação não disponíveis. Validação limitada.");
-                showWarning('Dados Limitados', 'Dados de comparação não disponíveis. A validação pode ser limitada.');
+            // FLUXO CORRETO: Ler dados da BD em vez de depender dos ficheiros
+            console.log('🔄 Implementando fluxo correto: Caixa lê diretamente da BD');
+            
+            let validatedData = [];
+            
+            // 1. Tentar ler dados da BD primeiro (fluxo correto)
+            if (this.useDatabase || this.databaseReady) {
+                console.log('📋 Lendo dados da base de dados...');
+                updateProcessing('A ler dados da base de dados...', 'Base de Dados');
+                
+                validatedData = await this.loadValidatedDataFromDB();
+                
+                if (validatedData && validatedData.length > 0) {
+                    console.log(`✅ ${validatedData.length} registos carregados da BD`);
+                    showInfo('Fluxo Correto Ativo', 
+                        `✅ Dados carregados da BD: ${validatedData.length} registos\n` +
+                        `🔄 Fluxo: BD → Caixa (independente de ficheiros)`
+                    );
+                } else {
+                    console.log('⚠️ Nenhum dado encontrado na BD');
+                }
             }
+            
+            // 2. Fallback: usar dados da comparação se BD não disponível
+            if (!validatedData || validatedData.length === 0) {
+                console.log('📁 Usando dados da comparação como fallback...');
+                updateProcessing('A usar dados da comparação...', 'Fallback');
+                
+                const comparisonResults = window.comparator ? window.comparator.getResults() : null;
+                validatedData = comparisonResults ? comparisonResults.all : [];
+                
+                if (!validatedData || validatedData.length === 0) {
+                    console.warn("Dados de comparação não disponíveis. Validação limitada.");
+                    showWarning('Dados Limitados', 
+                        'Dados de comparação não disponíveis.\n' +
+                        'Para usar o fluxo correto, processa primeiro os ficheiros Odoo e Back Office.'
+                    );
+                }
+            }
+            
+            updateProcessing('A processar condutores...', 'Condutores');
             
             // Extrair condutores únicos
             this.drivers = [...new Set(caixaData
@@ -172,19 +319,120 @@ class ValidationSystem {
             // Preencher select de condutores
             this.populateDriverSelect();
             
-            // Processar entregas
+            updateProcessing('A validar entregas...', 'Validação');
+            
+            // Processar entregas com dados da BD ou comparação
             await this.processDeliveries(caixaData, validatedData);
+            
+            updateProcessing('A preparar interface...', 'Interface');
             
             // Mostrar interface
             this.showValidationInterface();
             
             hideProcessing();
-            showSuccess('Validação Iniciada', `${this.pendingDeliveries.length} entregas processadas para validação`);
+            
+            // Mostrar resultado baseado na fonte dos dados
+            if (this.useDatabase && validatedData.length > 0) {
+                showSuccess('Fluxo Correto Ativo!', 
+                    `✅ ${this.pendingDeliveries.length} entregas processadas\n` +
+                    `🔄 Dados carregados da BD: ${validatedData.length} registos\n` +
+                    `📋 Fluxo: Odoo+BackOffice → BD → Caixa\n` +
+                    `⚡ Independente de ficheiros carregados`
+                );
+            } else {
+                showSuccess('Validação Iniciada', 
+                    `${this.pendingDeliveries.length} entregas processadas para validação\n` +
+                    `💡 Para usar o fluxo correto, processa primeiro Odoo+BackOffice`
+                );
+            }
             
         } catch (error) {
             hideProcessing();
             console.error('Erro na inicialização da validação:', error);
             showError('Erro de Validação', 'Erro ao iniciar validação da caixa');
+        }
+    }
+
+    async loadValidatedDataFromDB() {
+        try {
+            if (!window.supabase) {
+                console.log('⚠️ Supabase não disponível');
+                return [];
+            }
+
+            console.log('🗄️ Carregando dados validados da BD...');
+            
+            // Carregar dados das comparações
+            const { data: comparisons, error: compError } = await window.supabase
+                .from('comparisons')
+                .select('*')
+                .order('processed_at', { ascending: false });
+
+            if (compError) {
+                console.warn('Erro ao carregar comparações:', compError);
+                return [];
+            }
+
+            // Carregar dados do Odoo
+            const { data: odooData, error: odooError } = await window.supabase
+                .from('sales_orders')
+                .select('*')
+                .order('imported_at', { ascending: false });
+
+            if (odooError) {
+                console.warn('Erro ao carregar dados Odoo:', odooError);
+            }
+
+            // Carregar dados do Back Office
+            const { data: boData, error: boError } = await window.supabase
+                .from('deliveries')
+                .select('*')
+                .order('imported_at', { ascending: false });
+
+            if (boError) {
+                console.warn('Erro ao carregar dados Back Office:', boError);
+            }
+
+            // Combinar dados para formato esperado
+            const validatedData = [];
+
+            if (comparisons && comparisons.length > 0) {
+                comparisons.forEach(comp => {
+                    // Encontrar dados originais correspondentes
+                    const odooRecord = odooData?.find(o => o.license_plate === comp.license_plate);
+                    const boRecord = boData?.find(b => b.license_plate === comp.license_plate);
+
+                    validatedData.push({
+                        licensePlate: comp.license_plate,
+                        alocation: comp.alocation,
+                        priceBookingOdoo: comp.booking_price_odoo,
+                        priceBookingBO: comp.booking_price_bo,
+                        parkBrandOdoo: comp.park_brand_odoo,
+                        parkBrandBO: comp.park_brand_bo,
+                        bookingDate: comp.booking_date,
+                        checkIn: comp.check_in,
+                        checkOut: comp.check_out,
+                        paymentMethod: comp.payment_method,
+                        campaign: comp.campaign,
+                        status: comp.status,
+                        inconsistencies: comp.inconsistencies || [],
+                        driverOdoo: comp.driver_odoo,
+                        driverBO: comp.driver_bo,
+                        processedAt: comp.processed_at,
+                        source: 'database',
+                        // Dados originais para validações detalhadas
+                        odooRecord: odooRecord,
+                        boRecord: boRecord
+                    });
+                });
+            }
+
+            console.log(`📊 Dados carregados da BD: ${validatedData.length} registos`);
+            return validatedData;
+
+        } catch (error) {
+            console.error('Erro ao carregar dados da BD:', error);
+            return [];
         }
     }
     
@@ -202,8 +450,19 @@ class ValidationSystem {
             });
         }
         
-        // Processar cada entrega
-        this.pendingDeliveries = [];
+        // SISTEMA INCREMENTAL: NÃO limpar pendingDeliveries existentes
+        // Manter dados existentes e adicionar novos
+        const existingDeliveries = this.pendingDeliveries || [];
+        const newDeliveries = [];
+        
+        // Criar mapa de entregas existentes para evitar duplicados
+        const existingPlatesMap = new Map();
+        existingDeliveries.forEach(delivery => {
+            const normalizedPlate = this.normalizeLicensePlate(delivery.licensePlate);
+            existingPlatesMap.set(normalizedPlate, delivery);
+        });
+        
+        console.log(`🔄 Sistema incremental: ${existingDeliveries.length} entregas existentes`);
         
         for (let i = 0; i < caixaData.length; i++) {
             const delivery = caixaData[i];
@@ -212,6 +471,13 @@ class ValidationSystem {
             updateProcessing(`A processar entrega ${i + 1} de ${caixaData.length}...`, 'Validação de Caixa');
             
             const licensePlateNormalized = this.normalizeLicensePlate(delivery.licensePlate);
+            
+            // Verificar se já existe (evitar duplicados)
+            if (existingPlatesMap.has(licensePlateNormalized)) {
+                console.log(`⚠️ Entrega duplicada ignorada: ${delivery.licensePlate}`);
+                continue;
+            }
+            
             const validatedRecord = validatedMap.get(licensePlateNormalized);
             
             // Aplicar regras de validação
@@ -221,7 +487,7 @@ class ValidationSystem {
             const processedDelivery = {
                 licensePlate: delivery.licensePlate,
                 alocation: delivery.alocation || this.generateAlocation(delivery.licensePlate),
-                checkOut: delivery.checkOut || delivery.dataCheckout || new Date().toISOString(),
+                checkOut: this.formatDate(delivery.checkOut || delivery.dataCheckout || new Date()),
                 paymentMethod: delivery.paymentMethod || 'N/A',
                 priceOnDelivery: parseFloat(delivery.priceOnDelivery) || parseFloat(delivery.valorEntrega) || 0,
                 condutorEntrega: delivery.condutorEntrega || delivery.driver || 'N/A',
@@ -244,10 +510,29 @@ class ValidationSystem {
                 validatedAt: null
             };
             
-            this.pendingDeliveries.push(processedDelivery);
+            newDeliveries.push(processedDelivery);
         }
         
-        console.log(`📝 ${this.pendingDeliveries.length} entregas processadas para validação`);
+        // Combinar entregas existentes com novas
+        this.pendingDeliveries = [...existingDeliveries, ...newDeliveries];
+        
+        console.log(`📝 Sistema incremental: ${newDeliveries.length} novas entregas adicionadas`);
+        console.log(`📊 Total de entregas: ${this.pendingDeliveries.length}`);
+        
+        // Atualizar lista de condutores (combinar existentes com novos)
+        const newDrivers = [...new Set(caixaData
+            .map(item => item.condutorEntrega || item.driver)
+            .filter(Boolean)
+        )];
+        
+        // Combinar condutores existentes com novos (sem duplicados)
+        const allDrivers = [...new Set([...this.drivers, ...newDrivers])];
+        this.drivers = allDrivers;
+        
+        console.log(`🚗 Condutores atualizados: ${this.drivers.length} total (${newDrivers.length} novos)`);
+        
+        // Atualizar select de condutores
+        this.populateDriverSelect();
     }
     
     async validateDelivery(delivery, validatedRecord) {
@@ -460,10 +745,23 @@ class ValidationSystem {
     // ===== VALIDAÇÃO DE ENTREGAS =====
     
     async validateDeliveryAction(alocation) {
-        const delivery = this.currentDriverDeliveries.find(d => d.alocation === alocation);
+        // Procurar em todos os arrays possíveis
+        let delivery = this.currentDriverDeliveries.find(d => d.alocation === alocation) ||
+                      this.pendingDeliveries.find(d => d.alocation === alocation);
+        
+        // Se não encontrar por alocação, tentar por matrícula
+        if (!delivery) {
+            delivery = this.currentDriverDeliveries.find(d => d.licensePlate === alocation) ||
+                      this.pendingDeliveries.find(d => d.licensePlate === alocation);
+        }
         
         if (!delivery) {
-            showError('Erro', 'Entrega não encontrada');
+            console.warn('Entrega não encontrada para validação:', alocation);
+            console.log('Arrays disponíveis para validação:', {
+                currentDriverDeliveries: this.currentDriverDeliveries.length,
+                pendingDeliveries: this.pendingDeliveries.length
+            });
+            showError('Erro', 'Entrega não encontrada para validação. Verifica se os dados foram carregados corretamente.');
             return;
         }
         
@@ -626,60 +924,251 @@ class ValidationSystem {
     async processValidation(delivery, validationData) {
         showProcessing('A processar validação...', 'Validação');
         
-        // Aplicar correções se necessário
-        if (validationData.action === 'correct') {
-            delivery.originalPrice = delivery.priceOnDelivery;
-            delivery.originalPaymentMethod = delivery.paymentMethod;
-            delivery.priceOnDelivery = validationData.correctedPrice;
-            delivery.paymentMethod = validationData.correctedMethod;
-            delivery.correctionNotes = validationData.notes;
-        }
-        
-        // Atualizar status
-        delivery.status = validationData.action === 'reject' ? 'rejected' : 'validated';
-        delivery.resolution = validationData.action;
-        delivery.validatedAt = validationData.validatedAt;
-        delivery.validationNotes = validationData.notes;
-        
-        // Remover da lista pendente e adicionar à validada
-        const index = this.currentDriverDeliveries.indexOf(delivery);
-        if (index !== -1) {
-            this.currentDriverDeliveries.splice(index, 1);
-        }
-        
-        this.validatedDeliveries.push(delivery);
-        this.validationHistory.push({
-            delivery,
-            validationData,
-            timestamp: new Date().toISOString()
-        });
-        
-        // Salvar no Supabase se disponível
-        if (window.caixaAPI) {
-            try {
-                await window.caixaAPI.saveValidation({
+        try {
+            // VERIFICAR INCONSISTÊNCIAS PERMANENTES PRIMEIRO
+            const permanentInconsistencies = await this.checkPermanentInconsistencies(delivery);
+            
+            if (permanentInconsistencies.length > 0) {
+                hideProcessing();
+                
+                // Mostrar modal de aprovação para inconsistências permanentes
+                const approved = await this.showPermanentInconsistencyApproval(delivery, permanentInconsistencies);
+                
+                if (!approved) {
+                    showInfo('Validação Cancelada', 'Validação cancelada pelo utilizador.');
+                    return;
+                }
+                
+                // Marcar inconsistências como aprovadas mas permanentes
+                delivery.permanentInconsistencies = permanentInconsistencies;
+                delivery.permanentInconsistenciesApproved = true;
+                delivery.permanentInconsistenciesApprovedAt = new Date().toISOString();
+                
+                showProcessing('A continuar validação...', 'Validação');
+            }
+            
+            // Aplicar correções se necessário
+            if (validationData.action === 'correct') {
+                delivery.originalPrice = delivery.priceOnDelivery;
+                delivery.originalPaymentMethod = delivery.paymentMethod;
+                delivery.priceOnDelivery = validationData.correctedPrice;
+                delivery.paymentMethod = validationData.correctedMethod;
+                delivery.correctionNotes = validationData.notes;
+            }
+            
+            // Atualizar status
+            delivery.status = validationData.action === 'reject' ? 'rejected' : 'validated';
+            delivery.resolution = validationData.action;
+            delivery.validatedAt = validationData.validatedAt;
+            delivery.validationNotes = validationData.notes;
+            
+            // IMPORTANTE: Manter inconsistências permanentes mesmo após validação
+            if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
+                delivery.status = 'validated_with_permanent_issues';
+                console.log('⚠️ Entrega validada mas mantém inconsistências permanentes:', {
                     licensePlate: delivery.licensePlate,
-                    status: delivery.status,
-                    originalPrice: delivery.originalPrice,
-                    correctedPrice: validationData.correctedPrice,
-                    originalPaymentMethod: delivery.originalPaymentMethod,
-                    correctedPaymentMethod: validationData.correctedMethod,
-                    notes: validationData.notes
+                    permanentInconsistencies: delivery.permanentInconsistencies
                 });
-            } catch (error) {
-                console.error('Erro ao salvar validação:', error);
+            }
+            
+            // Remover da lista pendente e adicionar à validada
+            const index = this.currentDriverDeliveries.indexOf(delivery);
+            if (index !== -1) {
+                this.currentDriverDeliveries.splice(index, 1);
+            }
+            
+            this.validatedDeliveries.push(delivery);
+            this.validationHistory.push({
+                delivery,
+                validationData,
+                permanentInconsistencies: delivery.permanentInconsistencies || [],
+                timestamp: new Date().toISOString()
+            });
+            
+            // Salvar no Supabase se disponível
+            if (window.caixaAPI) {
+                try {
+                    await window.caixaAPI.saveValidation({
+                        licensePlate: delivery.licensePlate,
+                        status: delivery.status,
+                        originalPrice: delivery.originalPrice,
+                        correctedPrice: validationData.correctedPrice,
+                        originalPaymentMethod: delivery.originalPaymentMethod,
+                        correctedPaymentMethod: validationData.correctedMethod,
+                        notes: validationData.notes,
+                        permanentInconsistencies: delivery.permanentInconsistencies || [],
+                        permanentInconsistenciesApproved: delivery.permanentInconsistenciesApproved || false
+                    });
+                } catch (error) {
+                    console.error('Erro ao salvar validação:', error);
+                }
+            }
+            
+            // Atualizar interface
+            this.updateDeliveryCount();
+            this.renderDeliveriesTable();
+            
+            hideProcessing();
+            
+            // Mostrar resultado baseado no tipo de validação
+            if (delivery.permanentInconsistencies && delivery.permanentInconsistencies.length > 0) {
+                showWarning(
+                    'Entrega Validada com Inconsistências', 
+                    `✅ Entrega ${delivery.alocation} validada\n` +
+                    `⚠️ ${delivery.permanentInconsistencies.length} inconsistência(s) permanente(s) aprovada(s)\n` +
+                    `🔒 Estas inconsistências NÃO desaparecerão`
+                );
+            } else {
+                showSuccess(
+                    'Entrega Validada', 
+                    `Entrega ${delivery.alocation} ${validationData.action === 'reject' ? 'rejeitada' : 'validada'} com sucesso`
+                );
+            }
+            
+        } catch (error) {
+            hideProcessing();
+            console.error('Erro no processamento da validação:', error);
+            showError('Erro de Validação', `Erro ao processar validação: ${error.message}`);
+        }
+    }
+
+    async checkPermanentInconsistencies(delivery) {
+        const inconsistencies = [];
+        
+        try {
+            // Encontrar dados validados correspondentes
+            const validatedRecord = this.findValidatedRecord(delivery);
+            
+            // Verificar cada regra crítica
+            for (const [ruleId, rule] of this.rules.entries()) {
+                if (rule.severity === 'critical' && rule.isPermanent && rule.requiresApproval) {
+                    const hasInconsistency = rule.check(delivery, validatedRecord);
+                    
+                    if (hasInconsistency) {
+                        inconsistencies.push({
+                            ruleId: ruleId,
+                            ruleName: rule.name,
+                            message: rule.getMessage(delivery, validatedRecord),
+                            approvalMessage: rule.getApprovalMessage ? rule.getApprovalMessage(delivery) : rule.getMessage(delivery, validatedRecord),
+                            severity: rule.severity,
+                            isPermanent: rule.isPermanent
+                        });
+                        
+                        console.log('🚨 Inconsistência permanente detectada:', {
+                            rule: rule.name,
+                            licensePlate: delivery.licensePlate,
+                            message: rule.getMessage(delivery, validatedRecord)
+                        });
+                    }
+                }
+            }
+            
+            return inconsistencies;
+            
+        } catch (error) {
+            console.error('Erro ao verificar inconsistências permanentes:', error);
+            return [];
+        }
+    }
+
+    async showPermanentInconsistencyApproval(delivery, inconsistencies) {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            
+            const inconsistencyList = inconsistencies.map(inc => 
+                `<div class="inconsistency-item">
+                    <h4>🚨 ${inc.ruleName}</h4>
+                    <p>${inc.message}</p>
+                </div>`
+            ).join('');
+            
+            modal.innerHTML = `
+                <div class="modal permanent-inconsistency-modal">
+                    <div class="modal-header">
+                        <h3>⚠️ INCONSISTÊNCIAS PERMANENTES DETECTADAS</h3>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <strong>ATENÇÃO:</strong> Foram detectadas ${inconsistencies.length} inconsistência(s) permanente(s) 
+                            que NÃO desaparecerão mesmo após aprovação.
+                        </div>
+                        
+                        <div class="delivery-info">
+                            <h4>📋 Entrega: ${delivery.alocation}</h4>
+                            <p><strong>Matrícula:</strong> ${delivery.licensePlate}</p>
+                            <p><strong>Método:</strong> ${delivery.paymentMethod}</p>
+                            <p><strong>Valor:</strong> €${delivery.priceOnDelivery}</p>
+                        </div>
+                        
+                        <div class="inconsistencies-list">
+                            <h4>🚨 Inconsistências Detectadas:</h4>
+                            ${inconsistencyList}
+                        </div>
+                        
+                        <div class="approval-warning">
+                            <h4>⚠️ IMPORTANTE:</h4>
+                            <ul>
+                                <li>Estas inconsistências são <strong>PERMANENTES</strong></li>
+                                <li>NÃO desaparecerão após aprovação</li>
+                                <li>Ficarão registadas no sistema</li>
+                                <li>Aparecerão em relatórios e exportações</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="approval-question">
+                            <h4>❓ Desejas aprovar e continuar mesmo assim?</h4>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button id="approve-permanent" class="btn btn-warning">
+                                ✅ Aprovar e Continuar
+                            </button>
+                            <button id="cancel-permanent" class="btn btn-secondary">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Event listeners
+            modal.querySelector('#approve-permanent').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                console.log('✅ Inconsistências permanentes aprovadas pelo utilizador');
+                resolve(true);
+            });
+            
+            modal.querySelector('#cancel-permanent').addEventListener('click', () => {
+                document.body.removeChild(modal);
+                console.log('❌ Aprovação de inconsistências permanentes cancelada');
+                resolve(false);
+            });
+        });
+    }
+
+    findValidatedRecord(delivery) {
+        // Procurar nos dados validados da BD ou comparação
+        if (window.validationSystem && window.validationSystem.validatedDataFromDB) {
+            return window.validationSystem.validatedDataFromDB.find(record => 
+                this.normalizeLicensePlate(record.licensePlate) === this.normalizeLicensePlate(delivery.licensePlate)
+            );
+        }
+        
+        // Fallback: procurar nos dados da comparação
+        if (window.comparator) {
+            const comparisonResults = window.comparator.getResults();
+            if (comparisonResults && comparisonResults.all) {
+                return comparisonResults.all.find(record => 
+                    this.normalizeLicensePlate(record.licensePlate) === this.normalizeLicensePlate(delivery.licensePlate)
+                );
             }
         }
         
-        // Atualizar interface
-        this.updateDeliveryCount();
-        this.renderDeliveriesTable();
-        
-        hideProcessing();
-        showSuccess(
-            'Entrega Validada', 
-            `Entrega ${delivery.alocation} ${validationData.action === 'reject' ? 'rejeitada' : 'validada'} com sucesso`
-        );
+        return null;
     }
 
     // ===== UTILITÁRIOS =====
@@ -696,14 +1185,62 @@ class ValidationSystem {
     }
     
     formatDate(dateString) {
-        if (!dateString) return 'N/A';
+        if (!dateString) return 'Sem data';
         
         try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-PT') + ' ' + 
-                   date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-        } catch {
-            return dateString;
+            let dateObj;
+            
+            // Se já é uma string formatada corretamente, retornar
+            if (typeof dateString === 'string' && dateString.includes('/') && !dateString.includes('Invalid')) {
+                return dateString;
+            }
+            
+            // Tentar diferentes formatos de parsing
+            if (typeof dateString === 'number') {
+                // Timestamp Unix (segundos ou milissegundos)
+                dateObj = dateString > 10000000000 ? new Date(dateString) : new Date(dateString * 1000);
+            } else if (typeof dateString === 'string') {
+                // Formato ISO ou outros formatos padrão
+                if (dateString.includes('T') || dateString.includes('-')) {
+                    dateObj = new Date(dateString);
+                } else if (dateString.includes('/')) {
+                    // Formato dd/mm/yyyy ou similar
+                    const parts = dateString.split(/[\\/\\s:]/);
+                    if (parts.length >= 3) {
+                        const day = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10) - 1; // Mês é 0-indexado
+                        const year = parseInt(parts[2], 10);
+                        const hour = parts[3] ? parseInt(parts[3], 10) : 0;
+                        const minute = parts[4] ? parseInt(parts[4], 10) : 0;
+                        dateObj = new Date(year, month, day, hour, minute);
+                    } else {
+                        dateObj = new Date(dateString);
+                    }
+                } else {
+                    dateObj = new Date(dateString);
+                }
+            } else {
+                dateObj = new Date(dateString);
+            }
+            
+            // Verificar se a data é válida
+            if (isNaN(dateObj.getTime())) {
+                console.warn('Data inválida recebida:', dateString);
+                return 'Data inválida';
+            }
+            
+            // Formatar para o padrão português
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            const hours = String(dateObj.getHours()).padStart(2, '0');
+            const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+            
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+            
+        } catch (error) {
+            console.warn('Erro ao formatar data:', error, 'Data original:', dateString);
+            return 'Erro na data';
         }
     }
     
@@ -726,38 +1263,166 @@ class ValidationSystem {
     }
     
     showDeliveryDetails(alocation) {
-        const delivery = this.currentDriverDeliveries.find(d => d.alocation === alocation) ||
-                        this.validatedDeliveries.find(d => d.alocation === alocation);
+        // Procurar em todos os arrays possíveis
+        let delivery = this.currentDriverDeliveries.find(d => d.alocation === alocation) ||
+                      this.validatedDeliveries.find(d => d.alocation === alocation) ||
+                      this.pendingDeliveries.find(d => d.alocation === alocation);
+        
+        // Se não encontrar por alocação, tentar por matrícula
+        if (!delivery) {
+            delivery = this.currentDriverDeliveries.find(d => d.licensePlate === alocation) ||
+                      this.validatedDeliveries.find(d => d.licensePlate === alocation) ||
+                      this.pendingDeliveries.find(d => d.licensePlate === alocation);
+        }
         
         if (!delivery) {
-            showError('Erro', 'Entrega não encontrada');
+            console.warn('Entrega não encontrada para alocação:', alocation);
+            console.log('Arrays disponíveis:', {
+                currentDriverDeliveries: this.currentDriverDeliveries.length,
+                validatedDeliveries: this.validatedDeliveries.length,
+                pendingDeliveries: this.pendingDeliveries.length
+            });
+            showError('Erro', 'Entrega não encontrada. Verifica se os dados foram carregados corretamente.');
             return;
         }
         
-        // Implementar modal de detalhes se necessário
+        // Criar modal de detalhes mais informativo
+        const detailsModal = this.createDeliveryDetailsModal(delivery);
+        document.body.appendChild(detailsModal);
+        
         console.log('Detalhes da entrega:', delivery);
-        showInfo('Detalhes', `Matrícula: ${delivery.licensePlate}\nStatus: ${delivery.status}\nInconsistências: ${delivery.inconsistencies.length}`);
+    }
+    
+    createDeliveryDetailsModal(delivery) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content delivery-details-modal">
+                <div class="modal-header">
+                    <h3>Detalhes da Entrega</h3>
+                    <button class="close-modal" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="delivery-info-grid">
+                        <div class="info-group">
+                            <label>Alocação:</label>
+                            <span>${delivery.alocation}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Matrícula:</label>
+                            <span>${delivery.licensePlate}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Data Checkout:</label>
+                            <span>${delivery.checkOut}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Método Pagamento:</label>
+                            <span>${delivery.paymentMethod}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Valor:</label>
+                            <span>€${parseFloat(delivery.priceOnDelivery || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Condutor:</label>
+                            <span>${delivery.condutorEntrega || 'N/A'}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Status:</label>
+                            <span class="status-badge status-${delivery.status}">${delivery.status}</span>
+                        </div>
+                        <div class="info-group">
+                            <label>Inconsistências:</label>
+                            <span>${delivery.inconsistencies ? delivery.inconsistencies.length : 0}</span>
+                        </div>
+                    </div>
+                    ${delivery.inconsistencies && delivery.inconsistencies.length > 0 ? `
+                        <div class="inconsistencies-section">
+                            <h4>Inconsistências Encontradas:</h4>
+                            <ul>
+                                ${delivery.inconsistencies.map(inc => `<li>${inc}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Fechar</button>
+                </div>
+            </div>
+        `;
+        return modal;
     }
 
     // ===== AÇÕES GERAIS =====
     
     addNewCaixaSheet() {
+        const currentStats = this.getValidationStats();
+        
         showConfirm(
             'Nova Folha de Caixa',
-            'Queres adicionar uma nova folha de caixa? Isto irá limpar as validações atuais.',
+            `Sistema Incremental Ativo!\n\n` +
+            `Dados atuais:\n` +
+            `• Entregas validadas: ${currentStats.validated}\n` +
+            `• Entregas pendentes: ${currentStats.pending}\n` +
+            `• Total de condutores: ${this.drivers.length}\n\n` +
+            `A nova folha será ADICIONADA aos dados existentes.\n` +
+            `Os registos atuais serão PRESERVADOS.\n\n` +
+            `Queres continuar?`,
             () => {
-                // Reset state
-                this.validatedDeliveries = [];
-                this.pendingDeliveries = [];
-                this.currentDriverDeliveries = [];
+                // NÃO limpar dados existentes - sistema incremental
+                // Apenas resetar a interface para nova importação
                 
-                // Reset interface
+                // Reset apenas da interface de seleção de condutor
                 if (this.elements.driverSelect) {
                     this.elements.driverSelect.value = '';
                 }
                 this.hideDriverDeliveries();
                 
-                showInfo('Nova Folha', 'Podes agora importar um novo ficheiro de caixa.');
+                // Limpar apenas a visualização atual, não os dados
+                this.currentDriverDeliveries = [];
+                
+                // Preparar para nova importação incremental
+                console.log('🔄 Sistema incremental ativo - dados preservados');
+                console.log('📊 Estado atual:', {
+                    validatedDeliveries: this.validatedDeliveries.length,
+                    pendingDeliveries: this.pendingDeliveries.length,
+                    drivers: this.drivers.length
+                });
+                
+                showInfo(
+                    'Sistema Incremental', 
+                    `✅ Pronto para nova folha!\n\n` +
+                    `• Dados existentes preservados\n` +
+                    `• Novos registos serão adicionados\n` +
+                    `• Condutores serão combinados\n\n` +
+                    `Podes agora importar o novo ficheiro de caixa.`
+                );
+            },
+            () => {
+                // Opção alternativa: Limpar tudo (comportamento antigo)
+                showConfirm(
+                    'Limpar Dados',
+                    'Queres limpar TODOS os dados existentes e começar do zero?',
+                    () => {
+                        // Reset completo (comportamento antigo)
+                        this.validatedDeliveries = [];
+                        this.pendingDeliveries = [];
+                        this.currentDriverDeliveries = [];
+                        this.drivers = [];
+                        this.validationHistory = [];
+                        
+                        // Reset interface
+                        if (this.elements.driverSelect) {
+                            this.elements.driverSelect.value = '';
+                            this.elements.driverSelect.innerHTML = '<option value="">Seleciona um condutor...</option>';
+                        }
+                        this.hideDriverDeliveries();
+                        
+                        console.log('🗑️ Todos os dados foram limpos');
+                        showInfo('Dados Limpos', 'Todos os dados foram removidos. Podes importar um novo ficheiro.');
+                    }
+                );
             }
         );
     }

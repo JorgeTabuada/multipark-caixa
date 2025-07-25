@@ -581,3 +581,127 @@ body {
   }
 }
 
+
+
+/* ===== SISTEMA DE EXPORTAÇÃO ===== */
+
+.export-history-item {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: var(--transition);
+}
+
+.export-history-item:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+}
+
+.export-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.export-info strong {
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
+.export-date {
+    color: var(--gray-medium);
+    font-size: 12px;
+}
+
+.export-details {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    color: var(--gray-dark);
+}
+
+.export-details span {
+    background: var(--gray-light);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Botão de exportação */
+#export-btn {
+    background: linear-gradient(135deg, var(--success-color) 0%, #45a049 100%);
+    border: none;
+    color: var(--white);
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#export-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+#export-btn:active {
+    transform: translateY(0);
+}
+
+#export-btn:disabled {
+    background: var(--gray-medium);
+    cursor: not-allowed;
+    transform: none;
+}
+
+#export-btn::before {
+    content: "📊";
+    font-size: 18px;
+}
+
+/* Animação de carregamento para exportação */
+.export-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.export-loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: exportProgress 2s infinite;
+}
+
+@keyframes exportProgress {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Responsividade para exportação */
+@media (max-width: 768px) {
+    .export-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .export-details {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    #export-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+

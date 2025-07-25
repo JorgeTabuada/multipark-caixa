@@ -424,6 +424,9 @@
     </div>
 
     <!-- Scripts da aplicação na ordem correta para inicialização -->
+    <!-- 0. Biblioteca XLSX para exportação Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <!-- 1. Sistema de debug primeiro (para diagnosticar problemas) -->
     <script src="js/debug-system.js"></script>
     
@@ -441,6 +444,7 @@
     <script src="js/comparison-system.js"></script>
     <script src="js/validation-system.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/export-system.js"></script>
     
     <!-- 5. Aplicação principal por último -->
     <script src="js/app.js"></script>

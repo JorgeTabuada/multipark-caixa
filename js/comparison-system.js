@@ -431,12 +431,205 @@ class ComparisonSystem {
         });
     }
     
-    proceedToValidation() {
-        // Mudar para tab de validação de caixa
-        const validateTab = document.querySelector('.nav-tab[data-tab="validate"]');
-        if (validateTab && window.caixaApp) {
-            window.caixaApp.switchTab('validate');
-            this.showNotification('Dados validados! Agora podes importar o ficheiro de caixa.', 'success');
+    async proceedToValidation() {
+        try {
+            showProcessing('A implementar fluxo correto...', 'Salvando na Base de Dados');
+            
+            // FLUXO CORRETO: Salvar dados comparados na BD primeiro
+            console.log('🔄 Implementando fluxo correto: Odoo+BackOffice → BD → Caixa');
+            
+            updateProcessing('A salvar dados na base de dados...', 'Base de Dados');
+            
+            // 1. Salvar dados comparados no Supabase
+            const saveResult = await this.saveComparisonsToDB();
+            
+            if (!saveResult.success) {
+                hideProcessing();
+                showError('Erro na Base de Dados', 'Erro ao salvar dados na base de dados. Tenta novamente.');
+                return;
+            }
+            
+            updateProcessing('A configurar sistema de validação...', 'Configuração');
+            
+            // 2. Configurar sistema de validação para ler da BD
+            await this.configureValidationFromDB();
+            
+            updateProcessing('A preparar interface...', 'Interface');
+            
+            // 3. Mudar para tab de validação de caixa
+            const validateTab = document.querySelector('.nav-tab[data-tab="validate"]');
+            if (validateTab && window.caixaApp) {
+                window.caixaApp.switchTab('validate');
+            }
+            
+            hideProcessing();
+            
+            // 4. Mostrar notificação de sucesso com instruções
+            showSuccess(
+                'Fluxo Implementado!', 
+                `✅ Dados salvos na base de dados!\n\n` +
+                `🔄 Fluxo ativo: Odoo+BackOffice → BD → Caixa\n\n` +
+                `📋 A caixa agora lê diretamente da BD:\n` +
+                `• Não importa se o ficheiro foi carregado\n` +
+                `• Desde que esteja na BD, será encontrado\n` +
+                `• Compara mesmo com datas diferentes\n\n` +
+                `Podes agora importar o ficheiro de caixa.`
+            );
+            
+            console.log('✅ Fluxo correto implementado com sucesso!');
+            
+        } catch (error) {
+            hideProcessing();
+            console.error('Erro ao implementar fluxo correto:', error);
+            showError('Erro de Implementação', `Erro ao implementar fluxo correto: ${error.message}`);
+        }
+    }
+
+    async saveComparisonsToDB() {
+        try {
+            if (!window.caixaAPI) {
+                throw new Error('API do Supabase não disponível');
+            }
+
+            console.log('💾 Salvando comparações na BD...');
+            
+            // Preparar dados para salvar
+            const dataToSave = this.comparisonResults.map(comparison => ({
+                license_plate: comparison.licensePlate,
+                alocation: comparison.alocation,
+                booking_price_odoo: comparison.priceBookingOdoo || 0,
+                booking_price_bo: comparison.priceBookingBO || 0,
+                park_brand_odoo: comparison.parkBrandOdoo || '',
+                park_brand_bo: comparison.parkBrandBO || '',
+                booking_date: comparison.bookingDate || null,
+                check_in: comparison.checkIn || null,
+                check_out: comparison.checkOut || null,
+                payment_method: comparison.paymentMethod || '',
+                campaign: comparison.campaign || 'false',
+                status: comparison.status || 'consistent',
+                inconsistencies: comparison.inconsistencies || [],
+                driver_odoo: comparison.driverOdoo || '',
+                driver_bo: comparison.driverBO || '',
+                processed_at: new Date().toISOString(),
+                source: 'comparison_system'
+            }));
+
+            // Salvar no Supabase (tabela comparisons)
+            const { data, error } = await window.supabase
+                .from('comparisons')
+                .upsert(dataToSave, { 
+                    onConflict: 'license_plate',
+                    ignoreDuplicates: false 
+                });
+
+            if (error) {
+                console.error('Erro ao salvar comparações:', error);
+                throw new Error(`Erro na base de dados: ${error.message}`);
+            }
+
+            console.log(`✅ ${dataToSave.length} comparações salvas na BD`);
+            
+            // Também salvar dados originais nas tabelas específicas
+            await this.saveOriginalDataToDB();
+            
+            return { success: true, count: dataToSave.length };
+            
+        } catch (error) {
+            console.error('Erro ao salvar na BD:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async saveOriginalDataToDB() {
+        try {
+            // Salvar dados do Odoo (sales_orders)
+            if (this.odooData && this.odooData.length > 0) {
+                const odooForDB = this.odooData.map(item => ({
+                    license_plate: item.licensePlate || item.IMA || '',
+                    alocation: item.alocation || '',
+                    booking_price: parseFloat(item.bookingPrice) || 0,
+                    park_brand: item.parkBrand || '',
+                    booking_date: item.bookingDate || null,
+                    check_in: item.checkIn || null,
+                    check_out: item.checkOut || null,
+                    payment_method: item.paymentMethod || '',
+                    campaign: item.campaign || 'false',
+                    driver: item.driver || '',
+                    source: 'odoo',
+                    imported_at: new Date().toISOString()
+                }));
+
+                const { error: odooError } = await window.supabase
+                    .from('sales_orders')
+                    .upsert(odooForDB, { 
+                        onConflict: 'license_plate',
+                        ignoreDuplicates: false 
+                    });
+
+                if (odooError) {
+                    console.warn('Erro ao salvar dados Odoo:', odooError);
+                } else {
+                    console.log(`✅ ${odooForDB.length} registos Odoo salvos`);
+                }
+            }
+
+            // Salvar dados do Back Office (deliveries)
+            if (this.backofficeData && this.backofficeData.length > 0) {
+                const boForDB = this.backofficeData.map(item => ({
+                    license_plate: item.licensePlate || '',
+                    alocation: item.alocation || '',
+                    booking_price: parseFloat(item.bookingPrice) || 0,
+                    park_brand: item.parkBrand || '',
+                    booking_date: item.bookingDate || null,
+                    check_in: item.checkIn || null,
+                    check_out: item.checkOut || null,
+                    payment_method: item.paymentMethod || '',
+                    campaign: item.campaign || 'false',
+                    driver: item.driver || '',
+                    source: 'backoffice',
+                    imported_at: new Date().toISOString()
+                }));
+
+                const { error: boError } = await window.supabase
+                    .from('deliveries')
+                    .upsert(boForDB, { 
+                        onConflict: 'license_plate',
+                        ignoreDuplicates: false 
+                    });
+
+                if (boError) {
+                    console.warn('Erro ao salvar dados Back Office:', boError);
+                } else {
+                    console.log(`✅ ${boForDB.length} registos Back Office salvos`);
+                }
+            }
+
+        } catch (error) {
+            console.warn('Erro ao salvar dados originais:', error);
+        }
+    }
+
+    async configureValidationFromDB() {
+        try {
+            console.log('⚙️ Configurando sistema de validação para ler da BD...');
+            
+            // Configurar o sistema de validação para usar dados da BD
+            if (window.validationSystem) {
+                // Marcar que deve ler da BD
+                window.validationSystem.useDatabase = true;
+                window.validationSystem.databaseReady = true;
+                
+                console.log('✅ Sistema de validação configurado para BD');
+            }
+            
+            // Configurar comparador para fornecer dados da BD
+            if (window.comparator) {
+                window.comparator.databaseMode = true;
+                console.log('✅ Comparador configurado para modo BD');
+            }
+            
+        } catch (error) {
+            console.warn('Erro ao configurar validação:', error);
         }
     }
 
