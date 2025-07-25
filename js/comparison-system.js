@@ -515,7 +515,7 @@ class ComparisonSystem {
             }));
 
             // Salvar no Supabase (tabela comparisons)
-            const { data, error } = await window.supabase
+            const { data, error } = await window.caixaAPI.client
                 .from('comparisons')
                 .upsert(dataToSave, { 
                     onConflict: 'license_plate',
@@ -559,7 +559,7 @@ class ComparisonSystem {
                     imported_at: new Date().toISOString()
                 }));
 
-                const { error: odooError } = await window.supabase
+                const { error: odooError } = await window.caixaAPI.client
                     .from('sales_orders')
                     .upsert(odooForDB, { 
                         onConflict: 'license_plate',
@@ -590,7 +590,7 @@ class ComparisonSystem {
                     imported_at: new Date().toISOString()
                 }));
 
-                const { error: boError } = await window.supabase
+                const { error: boError } = await window.caixaAPI.client
                     .from('deliveries')
                     .upsert(boForDB, { 
                         onConflict: 'license_plate',

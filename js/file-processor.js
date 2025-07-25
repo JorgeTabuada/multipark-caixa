@@ -9,17 +9,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let backOfficeData = null;
     let caixaData = null;
 
-    // Referências aos elementos de upload de arquivos
+    // Referências aos elementos de upload de arquivos com verificação de segurança
     const odooFileInput = document.getElementById('odoo-file');
     const backofficeFileInput = document.getElementById('backoffice-file');
     const caixaFileInput = document.getElementById('caixa-file');
     
-    // Botões de upload
+    // Botões de upload com verificação de segurança
     const odooUpload = document.getElementById('odoo-upload');
     const backofficeUpload = document.getElementById('backoffice-upload');
     const caixaUpload = document.getElementById('caixa-upload');
     
-    // Informações dos arquivos
+    // Informações dos arquivos com verificação de segurança
     const odooFileInfo = document.getElementById('odoo-file-info');
     const odooFilename = document.getElementById('odoo-filename');
     const backofficeFileInfo = document.getElementById('backoffice-file-info');
@@ -27,8 +27,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const caixaFileInfo = document.getElementById('caixa-file-info');
     const caixaFilename = document.getElementById('caixa-filename');
     
-    // Botão de processamento
+    // Botão de processamento com verificação de segurança
     const processFilesBtn = document.getElementById('process-files-btn');
+    
+    // Verificar se todos os elementos existem antes de adicionar event listeners
+    if (!odooFileInput || !backofficeFileInput || !caixaFileInput) {
+        console.error('❌ Elementos de input de ficheiro não encontrados');
+        return;
+    }
+    
+    if (!odooUpload || !backofficeUpload || !caixaUpload) {
+        console.error('❌ Botões de upload não encontrados');
+        return;
+    }
     
     // ===== CONFIGURAÇÃO DOS EVENTOS DE UPLOAD =====
     
@@ -38,10 +49,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     odooFileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
+        if (e.target && e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            odooFilename.textContent = file.name;
-            odooFileInfo.classList.remove('hidden');
+            if (odooFilename) odooFilename.textContent = file.name;
+            if (odooFileInfo) odooFileInfo.classList.remove('hidden');
             readExcelFile(file, 'odoo');
         }
     });
@@ -52,10 +63,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     backofficeFileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
+        if (e.target && e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            backofficeFilename.textContent = file.name;
-            backofficeFileInfo.classList.remove('hidden');
+            if (backofficeFilename) backofficeFilename.textContent = file.name;
+            if (backofficeFileInfo) backofficeFileInfo.classList.remove('hidden');
             readExcelFile(file, 'backoffice');
         }
     });
@@ -66,10 +77,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     caixaFileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
+        if (e.target && e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            caixaFilename.textContent = file.name;
-            caixaFileInfo.classList.remove('hidden');
+            if (caixaFilename) caixaFilename.textContent = file.name;
+            if (caixaFileInfo) caixaFileInfo.classList.remove('hidden');
             readExcelFile(file, 'caixa');
         }
     });
