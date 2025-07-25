@@ -343,7 +343,14 @@ window.testBrands = () => window.CaixaDebugger.testBrandMatching();
 // Auto-executar verificação após carregamento
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
-        window.CaixaDebugger.quickHealthCheck();
+        // Verificação de segurança antes de chamar o método
+        if (window.CaixaDebugger && typeof window.CaixaDebugger.quickHealthCheck === 'function') {
+            window.CaixaDebugger.quickHealthCheck();
+        } else if (typeof window.quickCheck === 'function') {
+            window.quickCheck();
+        } else {
+            console.warn('🔍 CaixaDebugger.quickHealthCheck não está disponível');
+        }
     }, 2000); // Aguardar 2s para todos os módulos carregarem
 });
 
