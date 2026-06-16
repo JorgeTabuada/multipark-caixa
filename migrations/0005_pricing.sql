@@ -6,6 +6,7 @@
 -- soma por categoria, deteta multi-pagamento e problemas, e compara
 -- a soma paga com a Caixa.
 -- =====================================================================
+DROP VIEW IF EXISTS staging.v_pricing;
 DROP MATERIALIZED VIEW IF EXISTS staging.mv_pricing;
 CREATE MATERIALIZED VIEW staging.mv_pricing AS
 WITH bo AS (
@@ -76,7 +77,9 @@ SELECT p.*,
   (n_metodos > 1)                                              AS multi_pagamento,
   (abs(soma_paga - coalesce(valor_reserva, soma_paga)) > 0.01) AS pago_difere_reserva,
   (itens_sem_metodo > 0)                                       AS tem_metodo_vazio,
-  (soma_paga_caixa IS NOT NULL AND abs(soma_paga - soma_paga_caixa) > 0.01) AS difere_caixa
+  (soma_paga_caixa IS NOT NULL AND abs(soma_paga - soma_paga_caixa) > 0.01) AS difere_caixa,
+  -- item com valor anormalmente alto (erro de inserção; parking não passa de ~1000€)
+  EXISTS (SELECT 1 FROM jsonb_array_elements(p.pricing_json) e WHERE (e->>'total')::numeric > 1000) AS valor_suspeito
 FROM staging.mv_pricing p;
 
 CREATE INDEX IF NOT EXISTS ix_mvp_mat ON staging.mv_pricing (matricula);

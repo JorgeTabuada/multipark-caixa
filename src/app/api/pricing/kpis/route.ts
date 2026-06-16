@@ -14,8 +14,9 @@ export async function GET(req: NextRequest) {
     }
     if (p.get("soMulti") === "1") c.push(sql`multi_pagamento IS TRUE`);
     if (p.get("soProblema") === "1")
-      c.push(sql`(tem_metodo_vazio IS TRUE OR difere_caixa IS TRUE OR (soma_total - soma_paga) > 0.01)`);
+      c.push(sql`(tem_metodo_vazio IS TRUE OR difere_caixa IS TRUE OR valor_suspeito IS TRUE OR (soma_total - soma_paga) > 0.01)`);
     if (p.get("soFaltaPagar") === "1") c.push(sql`(soma_total - soma_paga) > 0.01`);
+    if (p.get("soSuspeito") === "1") c.push(sql`valor_suspeito IS TRUE`);
     if (p.get("metodo")) c.push(sql`metodos ILIKE ${"%" + p.get("metodo") + "%"}`);
     if (p.get("dataDe")) c.push(sql`saida >= ${p.get("dataDe")}::timestamptz`);
     if (p.get("dataAte")) c.push(sql`saida <= ${p.get("dataAte")}::timestamptz`);
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
         count(*) FILTER (WHERE multi_pagamento)::int                        AS multi,
         count(*) FILTER (WHERE tem_metodo_vazio)::int                       AS sem_metodo,
         count(*) FILTER (WHERE difere_caixa)::int                           AS difere_caixa,
+        count(*) FILTER (WHERE valor_suspeito)::int                         AS suspeito,
         count(*) FILTER (WHERE (soma_total - soma_paga) > 0.01)::int        AS falta_pagar_n,
         coalesce(sum(soma_total - soma_paga) FILTER (WHERE (soma_total - soma_paga) > 0.01), 0)::numeric AS falta_pagar_eur,
         coalesce(sum(soma_total), 0)::numeric                               AS eur_total,

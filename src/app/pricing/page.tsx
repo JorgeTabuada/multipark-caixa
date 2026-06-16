@@ -2,13 +2,13 @@
 import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Nav } from "@/components/Nav";
-import { RowDetail } from "@/components/RowDetail";
+import { PricingDetail } from "@/components/PricingDetail";
 import { fmtMoney, fmtDate, fmtEur0 } from "@/lib/format";
 
 const PAGE = 100;
 type Row = Record<string, unknown>;
 interface Filters {
-  search?: string; soMulti?: boolean; soProblema?: boolean; soFaltaPagar?: boolean;
+  search?: string; soMulti?: boolean; soProblema?: boolean; soFaltaPagar?: boolean; soSuspeito?: boolean;
   dataDe?: string; dataAte?: string;
 }
 interface Item { total?: number; description?: string; amountPaid?: number; paymentMethod?: string; }
@@ -19,6 +19,7 @@ function buildParams(f: Filters, extra: Record<string, string> = {}) {
   if (f.soMulti) p.set("soMulti", "1");
   if (f.soProblema) p.set("soProblema", "1");
   if (f.soFaltaPagar) p.set("soFaltaPagar", "1");
+  if (f.soSuspeito) p.set("soSuspeito", "1");
   if (f.dataDe) p.set("dataDe", f.dataDe);
   if (f.dataAte) p.set("dataAte", f.dataAte);
   Object.entries(extra).forEach(([k, v]) => p.set(k, v));
@@ -52,7 +53,7 @@ export default function PricingPage() {
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState("saida");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
-  const [detail, setDetail] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Row | null>(null);
   const set = (patch: Partial<Filters>) => { setF({ ...f, ...patch }); setPage(0); };
 
   const kpis = useQuery({
@@ -90,6 +91,7 @@ export default function PricingPage() {
         <Kpi n={k ? k.sem_metodo.toLocaleString("pt-PT") : "…"} l="item sem método" tone="#dc2626" />
         <Kpi n={k ? k.falta_pagar_n.toLocaleString("pt-PT") : "…"} l="por pagar" tone="#dc2626" />
         <Kpi n={k ? fmtEur0(k.falta_pagar_eur) : "…"} l="€ por pagar" tone="#dc2626" />
+        <Kpi n={k ? (k.suspeito ?? 0).toLocaleString("pt-PT") : "…"} l="valor suspeito" tone="#dc2626" />
         <Kpi n={k ? k.difere_caixa.toLocaleString("pt-PT") : "…"} l="difere da caixa" tone="#d97706" />
         <Kpi n={k ? fmtEur0(k.eur_valet) : "…"} l="€ valet" />
         <Kpi n={k ? fmtEur0(k.eur_estacionamento) : "…"} l="€ estacionamento" />
@@ -121,6 +123,9 @@ export default function PricingPage() {
         <label className="flex items-center gap-1.5 text-xs text-mut cursor-pointer mb-1.5">
           <input type="checkbox" checked={!!f.soFaltaPagar} onChange={(e) => set({ soFaltaPagar: e.target.checked })} /> só por pagar
         </label>
+        <label className="flex items-center gap-1.5 text-xs text-mut cursor-pointer mb-1.5">
+          <input type="checkbox" checked={!!f.soSuspeito} onChange={(e) => set({ soSuspeito: e.target.checked })} /> só valor suspeito
+        </label>
       </div>
 
       {data.data?.error && <div className="bg-badbg border border-line text-bad rounded-lg p-3 mb-3 text-xs">Erro: {data.data.error}</div>}
@@ -151,9 +156,10 @@ export default function PricingPage() {
               if (r.multi_pagamento) probl.push("≥2 pagamentos");
               if (r.tem_metodo_vazio) probl.push("sem método");
               if (falta > 0.01) probl.push("por pagar");
+              if (r.valor_suspeito) probl.push("valor suspeito ⚠");
               if (r.difere_caixa) probl.push("≠ caixa");
               return (
-                <tr key={i} onClick={() => r.multipark_id && setDetail(String(r.multipark_id))}
+                <tr key={i} onClick={() => setDetail(r)}
                   className="border-b border-line/40 hover:bg-[#eaf1fb] cursor-pointer align-top">
                   <td className="px-2 py-1.5 font-medium">{String(r.matricula ?? "")}</td>
                   <td className="px-2 py-1.5"><span className="bg-chip rounded px-1.5 py-0.5 text-xxs">{String(r.cidade ?? "")}</span></td>
@@ -185,7 +191,7 @@ export default function PricingPage() {
         <button className="border border-line rounded-md px-3 py-1.5 text-mut hover:border-acc disabled:opacity-40" disabled={page + 1 >= totPages} onClick={() => setPage((x) => x + 1)}>seguinte →</button>
       </div>
 
-      {detail && <RowDetail id={detail} onClose={() => setDetail(null)} />}
+      {detail && <PricingDetail row={detail} onClose={() => setDetail(null)} />}
     </main>
   );
 }

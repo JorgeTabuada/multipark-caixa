@@ -16,8 +16,9 @@ function conds(p: URLSearchParams) {
   }
   if (p.get("soMulti") === "1") c.push(sql`multi_pagamento IS TRUE`);
   if (p.get("soProblema") === "1")
-    c.push(sql`(tem_metodo_vazio IS TRUE OR difere_caixa IS TRUE OR (soma_total - soma_paga) > 0.01)`);
+    c.push(sql`(tem_metodo_vazio IS TRUE OR difere_caixa IS TRUE OR valor_suspeito IS TRUE OR (soma_total - soma_paga) > 0.01)`);
   if (p.get("soFaltaPagar") === "1") c.push(sql`(soma_total - soma_paga) > 0.01`);
+  if (p.get("soSuspeito") === "1") c.push(sql`valor_suspeito IS TRUE`);
   if (p.get("metodo")) c.push(sql`metodos ILIKE ${"%" + p.get("metodo") + "%"}`);
   if (p.get("dataDe")) c.push(sql`saida >= ${p.get("dataDe")}::timestamptz`);
   if (p.get("dataAte")) c.push(sql`saida <= ${p.get("dataAte")}::timestamptz`);
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
              round(soma_total - soma_paga, 2) AS falta_pagar,
              v_valet, v_estacionamento, v_entrega, v_extras, itens_sem_metodo,
              soma_paga_caixa, metodos_caixa,
-             multi_pagamento, pago_difere_reserva, tem_metodo_vazio, difere_caixa,
+             multi_pagamento, pago_difere_reserva, tem_metodo_vazio, difere_caixa, valor_suspeito,
              pricing_json
       FROM staging.v_pricing ${where}
       ORDER BY ${sql(sortCol)} ${dir} NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
