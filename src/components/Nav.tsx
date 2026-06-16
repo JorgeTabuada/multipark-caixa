@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/stripe", label: "🟣 Stripe" },
   { href: "/campanhas", label: "🎯 Campanhas" },
   { href: "/metodos", label: "💶 Métodos" },
+  { href: "/pricing", label: "🧾 Pricing" },
 ];
 
 export function Nav() {
