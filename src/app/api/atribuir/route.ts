@@ -27,8 +27,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST { fonte, ref, multipark_id, matricula, valor, metodo, nota } -> atribui (upsert)
-//   multipark_id null/"" -> remove a atribuição
+// POST { fonte, ref, acao, multipark_id, matricula, valor, metodo, nota }
+//   acao "anexar"  (default se multipark_id) -> liga o pagamento a uma reserva
+//   acao "retirar" -> marca como NÃO sendo de nenhuma reserva (anula o match automático)
+//   acao "auto"    -> apaga a regra manual (volta ao matching automático)
 export async function POST(req: NextRequest) {
   try {
     const b = await req.json();
@@ -36,13 +38,18 @@ export async function POST(req: NextRequest) {
     const ref = String(b.ref || "");
     if (!FONTES.has(fonte) || !ref) return NextResponse.json({ error: "fonte/ref inválidos" }, { status: 400 });
 
-    if (!b.multipark_id) {
+    const acao = b.acao || (b.multipark_id ? "anexar" : "retirar");
+
+    if (acao === "auto") {
       await sql`DELETE FROM staging.atribuicao WHERE fonte = ${fonte} AND ref = ${ref}`;
-      return NextResponse.json({ ok: true, removido: true });
+      return NextResponse.json({ ok: true, auto: true });
     }
+    // anexar -> multipark_id da reserva ; retirar -> '' (string vazia = desligado)
+    const mp = acao === "retirar" ? "" : String(b.multipark_id || "");
+    if (acao === "anexar" && !mp) return NextResponse.json({ error: "falta multipark_id" }, { status: 400 });
     await sql`
       INSERT INTO staging.atribuicao (fonte, ref, multipark_id, matricula, valor, metodo, nota, updated_at)
-      VALUES (${fonte}, ${ref}, ${b.multipark_id}, ${b.matricula ?? null},
+      VALUES (${fonte}, ${ref}, ${mp}, ${b.matricula ?? null},
               ${b.valor ?? null}, ${b.metodo ?? null}, ${b.nota ?? null}, now())
       ON CONFLICT (fonte, ref) DO UPDATE
         SET multipark_id = EXCLUDED.multipark_id, matricula = EXCLUDED.matricula,

@@ -44,7 +44,7 @@ const COLS: { k: string; l: string; kind: string; sort?: boolean }[] = [
 ];
 
 const CONF_COLOR: Record<string, string> = {
-  alta: "#16a34a", media: "#d97706", baixa: "#ea580c", nenhuma: "#dc2626", manual: "#1d6fe6",
+  alta: "#16a34a", media: "#d97706", baixa: "#ea580c", nenhuma: "#dc2626", manual: "#1d6fe6", retirado: "#94a3b8",
 };
 
 function buildParams(f: Filters, extra: Record<string, string> = {}) {
@@ -211,8 +211,10 @@ export default function VivaPage() {
           </thead>
           <tbody>
             {(data.data?.rows ?? []).map((raw, i) => {
-              // atribuição manual sobrepõe o match automático
-              const r = raw.atrib_mp
+              // atribuição manual sobrepõe o match automático ("" = retirado)
+              const r = raw.atrib_mp === ""
+                ? { ...raw, reserva_id: null, matricula: null, confianca: "retirado", match_metodo: "retirado manualmente" }
+                : raw.atrib_mp
                 ? { ...raw, reserva_id: raw.atrib_mp, matricula: raw.atrib_mat ?? raw.matricula, confianca: "manual", match_metodo: "atribuição manual" }
                 : raw;
               const rid = (r.reserva_id || r.matricula) as string | undefined;

@@ -9,7 +9,7 @@ function parseItens(json: unknown): Item[] {
   try { return Array.isArray(json) ? json : JSON.parse(String(json)); } catch { return []; }
 }
 
-export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void }) {
+export function PricingDetail({ row, onClose, onAbrirReserva }: { row: Row; onClose: () => void; onAbrirReserva?: (id: string) => void }) {
   const itens = parseItens(row.pricing_json);
   const [copied, setCopied] = useState<string | null>(null);
   const [proc, setProc] = useState<{ valor: number; metodo: string } | null>(null);
@@ -86,6 +86,10 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
           </h3>
           <div className="flex items-center gap-3">
             {copied && <span className="text-ok text-xs">copiado: {copied.length > 28 ? copied.slice(0, 26) + "…" : copied}</span>}
+            {onAbrirReserva && !!row.multipark_id && (
+              <button className="text-xs border border-acc/50 text-acc rounded-md px-2 py-1 hover:bg-[#e0ecff]"
+                onClick={() => onAbrirReserva(String(row.multipark_id))}>detalhe completo →</button>
+            )}
             <button className="text-mut hover:text-txt text-lg leading-none" onClick={onClose}>✕</button>
           </div>
         </div>

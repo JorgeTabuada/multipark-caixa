@@ -82,9 +82,9 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
     queryFn: async () => (await fetch(`/api/revisao?id=${encodeURIComponent(realId)}`)).json() as Promise<{ estado: string | null; notas: string | null }>,
     enabled: !isLoading,
   });
-  const atr = useQuery({
-    queryKey: ["atrib", realId],
-    queryFn: async () => (await fetch(`/api/atribuir?multipark_id=${encodeURIComponent(realId)}`)).json() as Promise<{ atribuicoes: Record<string, unknown>[] }>,
+  const pags = useQuery({
+    queryKey: ["pags", realId],
+    queryFn: async () => (await fetch(`/api/reserva-pagamentos?multipark_id=${encodeURIComponent(realId)}`)).json() as Promise<{ pagamentos: Record<string, unknown>[] }>,
     enabled: !isLoading,
   });
 
@@ -119,6 +119,35 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
   // estado automático sugerido (a partir do detalhe)
   const autoEstado = data ? (Number(data.n_diferencas) === 0 ? "ok" : "pendente") : "pendente";
   const efetivo = estado || autoEstado;
+
+  // gestão de pagamentos da reserva (anexar / retirar)
+  const [pvalor, setPvalor] = useState("");
+  const [pcands, setPcands] = useState<Record<string, unknown>[] | null>(null);
+  const [ploading, setPloading] = useState(false);
+  const procurarPag = async (valor: string) => {
+    const v = parseFloat(valor.replace(",", ".")); if (!v) return;
+    setPloading(true); setPcands(null);
+    const dt = encodeURIComponent(String(data?.saida_mp || ""));
+    const j = await (await fetch(`/api/pricing/procurar?valor=${v}&data=${dt}&horas=72&excluir=${encodeURIComponent(realId)}`)).json();
+    setPcands(j.resultados || []); setPloading(false);
+  };
+  const anexarPag = async (c: Record<string, unknown>) => {
+    await fetch("/api/atribuir", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: "anexar", fonte: String(c.fonte).toLowerCase(), ref: c.ref, multipark_id: realId, matricula: data?.matricula_mp, valor: c.valor }) });
+    qc.invalidateQueries({ queryKey: ["pags", realId] });
+    qc.invalidateQueries({ queryKey: ["recon"] });
+  };
+  const fmtDelta = (sec: number) => {
+    const a = Math.abs(sec), sg = sec >= 0 ? "+" : "−";
+    if (a < 90) return `${sg}${a}s`;
+    if (a < 5400) return `${sg}${Math.round(a / 60)}min`;
+    return `${sg}${(a / 3600).toFixed(1)}h`;
+  };
+  const retirarPag = async (p: Record<string, unknown>) => {
+    await fetch("/api/atribuir", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: p.origem === "manual" ? "auto" : "retirar", fonte: p.fonte, ref: p.ref, multipark_id: realId }) });
+    qc.invalidateQueries({ queryKey: ["pags", realId] });
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={onClose}>
@@ -192,18 +221,61 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
 
         {isLoading && <div className="text-mut text-sm">a carregar…</div>}
 
-        {/* Pagamentos atribuídos manualmente a esta reserva */}
-        {atr.data?.atribuicoes && atr.data.atribuicoes.length > 0 && (
-          <div className="bg-okbg border border-ok/30 rounded-lg p-3 mb-3">
-            <div className="text-sm font-semibold text-ok mb-1">✓ Pagamentos atribuídos manualmente</div>
-            {atr.data.atribuicoes.map((a, i) => (
-              <div key={i} className="text-sm">
-                <span className="bg-chip rounded px-1.5 py-0.5 text-xs mr-2">{String(a.fonte)}</span>
-                <b>{a.valor != null ? Number(a.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 }) + " €" : ""}</b>
-                {a.metodo ? <span className="text-mut"> · {String(a.metodo)}</span> : null}
-                <span className="text-mut"> · {String(a.ref)}</span>
+        {/* Gestão de pagamentos da reserva (anexar / retirar Viva, Stripe) */}
+        {data && (
+          <div className="bg-panel2 border border-line rounded-lg p-3 mb-3">
+            <div className="text-sm font-semibold mb-2">Pagamentos da reserva</div>
+            {pags.data?.pagamentos && pags.data.pagamentos.length > 0 ? (
+              <div className="flex flex-col gap-1 mb-2">
+                {pags.data.pagamentos.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="bg-chip rounded px-1.5 py-0.5 text-xs">{String(p.fonte)}</span>
+                    <span className="tabular font-semibold">{p.valor != null ? Number(p.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 }) + " €" : ""}</span>
+                    {p.data ? <span className="text-mut text-xs">{fmtDate(p.data)}</span> : null}
+                    <span className={"text-xs px-1.5 rounded " + (p.origem === "manual" ? "bg-[#e0ecff] text-acc" : "bg-chip text-mut")}>{p.origem === "manual" ? "manual" : "automático"}</span>
+                    <span className="text-xs text-mut break-all cursor-pointer hover:text-acc" onClick={() => copy(p.ref)}>{String(p.ref).slice(0, 22)}</span>
+                    <button className="ml-auto text-xs text-mut hover:text-bad" title="retirar este pagamento desta reserva" onClick={() => retirarPag(p)}>✕ retirar</button>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : <div className="text-mut text-xs mb-2">Sem pagamentos ligados a esta reserva.</div>}
+            {/* procurar e anexar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-mut">Anexar pagamento de</span>
+              <input className="bg-panel border border-line rounded-md px-2 py-1 text-xs w-24" placeholder="valor €"
+                value={pvalor} onChange={(e) => setPvalor(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") procurarPag(pvalor); }} />
+              <button className="text-xs border border-line rounded-md px-2 py-1 hover:border-acc text-acc"
+                onClick={() => procurarPag(pvalor)}>🔎 procurar</button>
+              {data.valor_mp != null && (
+                <button className="text-xs text-mut hover:text-acc" onClick={() => { setPvalor(String(data.valor_mp)); procurarPag(String(data.valor_mp)); }}>
+                  (valor da reserva: {fmtMoney(data.valor_mp)})
+                </button>
+              )}
+            </div>
+            {ploading && <div className="text-mut text-xs mt-1">a procurar…</div>}
+            {pcands && pcands.length > 0 && (
+              <table className="text-xs w-full mt-2">
+                <thead><tr className="text-mut text-left"><th className="py-1">Fonte</th><th>Valor</th><th>Data</th><th>Δ hora</th><th>Ref</th><th></th></tr></thead>
+                <tbody>
+                  {pcands.map((c, i) => {
+                    const dd = Number(c.dsec) || 0, perto = Math.abs(dd) <= 90;
+                    const liga = pags.data?.pagamentos?.some((p) => String(p.ref) === String(c.ref));
+                    return (
+                      <tr key={i} className={"border-t border-line/40 " + (perto ? "bg-okbg" : "")}>
+                        <td className="py-1"><span className="bg-chip rounded px-1.5 py-0.5">{String(c.fonte)}</span></td>
+                        <td className="tabular">{fmtMoney(c.valor)}</td>
+                        <td className="whitespace-nowrap">{fmtDate(c.data)}</td>
+                        <td className={"tabular " + (perto ? "text-ok font-semibold" : "text-mut")}>{fmtDelta(dd)}</td>
+                        <td className="break-all cursor-pointer hover:text-acc" onClick={() => copy(c.ref)}>{String(c.ref).slice(0, 20)}</td>
+                        <td>{liga ? <span className="text-ok text-xs">✓ ligado</span> : <button className="text-xs border border-ok/50 text-ok rounded px-2 py-0.5 hover:bg-okbg" onClick={() => anexarPag(c)}>anexar</button>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+            {pcands && pcands.length === 0 && !ploading && <div className="text-mut text-xs mt-1">Nenhum pagamento desse valor perto da data.</div>}
           </div>
         )}
 

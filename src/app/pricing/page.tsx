@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Nav } from "@/components/Nav";
 import { PricingDetail } from "@/components/PricingDetail";
+import { RowDetail } from "@/components/RowDetail";
 import { fmtMoney, fmtDate, fmtEur0 } from "@/lib/format";
 
 const PAGE = 100;
@@ -54,6 +55,7 @@ export default function PricingPage() {
   const [sort, setSort] = useState("saida");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [detail, setDetail] = useState<Row | null>(null);
+  const [detalheRes, setDetalheRes] = useState<string | null>(null);
   const set = (patch: Partial<Filters>) => { setF({ ...f, ...patch }); setPage(0); };
 
   const kpis = useQuery({
@@ -191,7 +193,9 @@ export default function PricingPage() {
         <button className="border border-line rounded-md px-3 py-1.5 text-mut hover:border-acc disabled:opacity-40" disabled={page + 1 >= totPages} onClick={() => setPage((x) => x + 1)}>seguinte →</button>
       </div>
 
-      {detail && <PricingDetail row={detail} onClose={() => setDetail(null)} />}
+      {detail && <PricingDetail row={detail} onClose={() => setDetail(null)}
+        onAbrirReserva={(id) => { setDetail(null); setDetalheRes(id); }} />}
+      {detalheRes && <RowDetail id={detalheRes} onClose={() => setDetalheRes(null)} />}
     </main>
   );
 }
