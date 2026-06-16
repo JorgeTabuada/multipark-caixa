@@ -38,14 +38,15 @@ SELECT
   -- somas
   (SELECT coalesce(sum((e->>'total')::numeric), 0) FROM jsonb_array_elements(bo.pj) e)      AS soma_total,
   (SELECT coalesce(sum((e->>'amountPaid')::numeric), 0) FROM jsonb_array_elements(bo.pj) e) AS soma_paga,
-  -- por categoria (description)
-  (SELECT coalesce(sum((e->>'total')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
+  -- por categoria (description) — somam o EFETIVAMENTE PAGO (amountPaid), não o preço de tabela,
+  -- para itens sem método/não pagos (amountPaid=0) não inflacionarem os totais
+  (SELECT coalesce(sum((e->>'amountPaid')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
      WHERE lower(e->>'description') LIKE '%valet%') AS v_valet,
-  (SELECT coalesce(sum((e->>'total')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
+  (SELECT coalesce(sum((e->>'amountPaid')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
      WHERE lower(e->>'description') LIKE '%estacionamento%' OR lower(e->>'description') LIKE '%reserva%') AS v_estacionamento,
-  (SELECT coalesce(sum((e->>'total')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
+  (SELECT coalesce(sum((e->>'amountPaid')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
      WHERE lower(e->>'description') LIKE '%entrega%') AS v_entrega,
-  (SELECT coalesce(sum((e->>'total')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
+  (SELECT coalesce(sum((e->>'amountPaid')::numeric), 0) FROM jsonb_array_elements(bo.pj) e
      WHERE lower(e->>'description') NOT LIKE '%valet%' AND lower(e->>'description') NOT LIKE '%estacionamento%'
        AND lower(e->>'description') NOT LIKE '%reserva%' AND lower(e->>'description') NOT LIKE '%entrega%') AS v_extras,
   -- itens sem método de pagamento

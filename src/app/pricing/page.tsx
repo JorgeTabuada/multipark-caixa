@@ -93,9 +93,9 @@ export default function PricingPage() {
         <Kpi n={k ? fmtEur0(k.falta_pagar_eur) : "…"} l="€ por pagar" tone="#dc2626" />
         <Kpi n={k ? (k.suspeito ?? 0).toLocaleString("pt-PT") : "…"} l="valor suspeito" tone="#dc2626" />
         <Kpi n={k ? k.difere_caixa.toLocaleString("pt-PT") : "…"} l="difere da caixa" tone="#d97706" />
-        <Kpi n={k ? fmtEur0(k.eur_valet) : "…"} l="€ valet" />
-        <Kpi n={k ? fmtEur0(k.eur_estacionamento) : "…"} l="€ estacionamento" />
-        <Kpi n={k ? fmtEur0(k.eur_extras) : "…"} l="€ extras/serviços" />
+        <Kpi n={k ? fmtEur0(k.eur_valet) : "…"} l="€ valet (pago)" />
+        <Kpi n={k ? fmtEur0(k.eur_estacionamento) : "…"} l="€ estacionamento (pago)" />
+        <Kpi n={k ? fmtEur0(k.eur_extras) : "…"} l="€ extras (pago)" />
       </div>
 
       <div className="bg-panel border border-line rounded-xl p-3 mb-3 flex flex-wrap gap-2 items-end">
@@ -143,9 +143,9 @@ export default function PricingPage() {
               <Th label="Total" k="soma_total" sort={sort} dir={dir} onSort={onSort} num />
               <Th label="Pago" k="soma_paga" sort={sort} dir={dir} onSort={onSort} num />
               <th className="px-2 py-1.5 text-right text-mut font-semibold">Por pagar</th>
-              <th className="px-2 py-1.5 text-right text-mut font-semibold">Valet</th>
-              <th className="px-2 py-1.5 text-right text-mut font-semibold">Estac.</th>
-              <th className="px-2 py-1.5 text-right text-mut font-semibold">Extras</th>
+              <th className="px-2 py-1.5 text-right text-mut font-semibold">Valet pago</th>
+              <th className="px-2 py-1.5 text-right text-mut font-semibold">Estac. pago</th>
+              <th className="px-2 py-1.5 text-right text-mut font-semibold">Extras pago</th>
               <th className="px-2 py-1.5 text-left text-mut font-semibold">Estado</th>
             </tr>
           </thead>
