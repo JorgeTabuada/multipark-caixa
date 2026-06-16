@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background: #eef3fa;
+  color: #14233f;
+  font: 14.5px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
+* { box-sizing: border-box; }
+
+::-webkit-scrollbar { height: 12px; width: 12px; }
+::-webkit-scrollbar-thumb { background: #c4d2e6; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #aebfd8; }
+::-webkit-scrollbar-track { background: #eef3fa; }
+
+.tabular { font-variant-numeric: tabular-nums; }
