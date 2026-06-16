@@ -67,6 +67,13 @@ export function FiltersBar({
           <option value="problema">Problema</option>
         </select>
       </Field>
+      <Field label="Revisto por mim">
+        <select className={sel} value={f.revisto || ""} onChange={(e) => set({ revisto: e.target.value || undefined })}>
+          <option value="">todas</option>
+          <option value="sim">já revistas</option>
+          <option value="nao">por rever</option>
+        </select>
+      </Field>
       <Field label="Saída de">
         <input type="date" className={inp} value={f.dataDe || ""} onChange={(e) => set({ dataDe: e.target.value || undefined })} />
       </Field>

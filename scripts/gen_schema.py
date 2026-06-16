@@ -317,6 +317,7 @@ export interface Filters {
   campanhaSemPgto?: boolean;
   soComDiferencas?: boolean;
   revisaoEstado?: string;
+  revisto?: string;
 }
 '''.replace("__COLS__", col_defs()).replace("__FLAGS__", flag_defs())
 

@@ -10,7 +10,7 @@ const PAGE = 100;
 type Row = Record<string, unknown>;
 interface Filters {
   search?: string; soMulti?: boolean; soProblema?: boolean; soFaltaPagar?: boolean; soSuspeito?: boolean;
-  dataDe?: string; dataAte?: string;
+  revisto?: string; dataDe?: string; dataAte?: string;
 }
 interface Item { total?: number; description?: string; amountPaid?: number; paymentMethod?: string; }
 
@@ -21,6 +21,7 @@ function buildParams(f: Filters, extra: Record<string, string> = {}) {
   if (f.soProblema) p.set("soProblema", "1");
   if (f.soFaltaPagar) p.set("soFaltaPagar", "1");
   if (f.soSuspeito) p.set("soSuspeito", "1");
+  if (f.revisto) p.set("revisto", f.revisto);
   if (f.dataDe) p.set("dataDe", f.dataDe);
   if (f.dataAte) p.set("dataAte", f.dataAte);
   Object.entries(extra).forEach(([k, v]) => p.set(k, v));
@@ -115,6 +116,14 @@ export default function PricingPage() {
         <div className="flex flex-col gap-1">
           <label className="text-mut text-xxs uppercase">Saída até</label>
           <input type="date" className={selCls} value={f.dataAte || ""} onChange={(e) => set({ dataAte: e.target.value || undefined })} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-mut text-xxs uppercase">Revisto por mim</label>
+          <select className={selCls} value={f.revisto || ""} onChange={(e) => set({ revisto: e.target.value || undefined })}>
+            <option value="">todas</option>
+            <option value="sim">já revistas</option>
+            <option value="nao">por rever</option>
+          </select>
         </div>
         <label className="flex items-center gap-1.5 text-xs text-mut cursor-pointer mb-1.5">
           <input type="checkbox" checked={!!f.soMulti} onChange={(e) => set({ soMulti: e.target.checked })} /> só ≥2 tipos de pagamento

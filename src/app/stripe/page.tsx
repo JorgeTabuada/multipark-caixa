@@ -9,7 +9,7 @@ const PAGE = 100;
 
 interface Filters {
   search?: string; status?: string; stripeStatus?: string; soErrado?: boolean; soSemReserva?: boolean;
-  dataDe?: string; dataAte?: string;
+  revisto?: string; dataDe?: string; dataAte?: string;
 }
 type Row = Record<string, unknown>;
 
@@ -48,6 +48,7 @@ function buildParams(f: Filters, extra: Record<string, string> = {}) {
   if (f.search) p.set("search", f.search);
   if (f.status) p.set("status", f.status);
   if (f.stripeStatus) p.set("stripeStatus", f.stripeStatus);
+  if (f.revisto) p.set("revisto", f.revisto);
   if (f.soErrado) p.set("soErrado", "1");
   if (f.soSemReserva) p.set("soSemReserva", "1");
   if (f.dataDe) p.set("dataDe", f.dataDe);
@@ -157,6 +158,14 @@ export default function StripePage() {
             {meta.data?.stripeStatus?.map((s) => (
               <option key={s.v} value={s.v}>{s.v} ({s.n})</option>
             ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-mut text-xxs uppercase">Revisto por mim</label>
+          <select className={selCls} value={f.revisto || ""} onChange={(e) => set({ revisto: e.target.value || undefined })}>
+            <option value="">todas</option>
+            <option value="sim">já revistas</option>
+            <option value="nao">por rever</option>
           </select>
         </div>
         <div className="flex flex-col gap-1">

@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
       SELECT mv.*,
         coalesce(r.estado, CASE WHEN mv.n_diferencas = 0 THEN 'ok' ELSE 'pendente' END) AS revisao_estado,
         r.notas AS revisao_notas,
-        (r.notas IS NOT NULL AND btrim(r.notas) <> '') AS tem_notas
+        (r.notas IS NOT NULL AND btrim(r.notas) <> '') AS tem_notas,
+        (r.estado IS NOT NULL) AS revisto
       FROM staging.mv_reconciliacao_wide mv
       LEFT JOIN staging.revisao r ON r.multipark_id = mv.multipark_id`;
 

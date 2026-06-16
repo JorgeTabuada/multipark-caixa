@@ -215,4 +215,5 @@ export interface Filters {
   campanhaSemPgto?: boolean;
   soComDiferencas?: boolean;
   revisaoEstado?: string;
+  revisto?: string;
 }

@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
     if (ss) c.push(sql`stripe_status = ${ss}`);
     if (p.get("soErrado") === "1") c.push(sql`valor_status = 'valor errado'`);
     if (p.get("soSemReserva") === "1") c.push(sql`tem_reserva IS FALSE`);
+    const rev = p.get("revisto");
+    if (rev === "sim") c.push(sql`mp_id IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL)`);
+    if (rev === "nao") c.push(sql`(mp_id IS NULL OR mp_id NOT IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL))`);
     if (p.get("dataDe")) c.push(sql`stripe_data >= ${p.get("dataDe")}::timestamptz`);
     if (p.get("dataAte")) c.push(sql`stripe_data <= ${p.get("dataAte")}::timestamptz`);
     let where = sql``;

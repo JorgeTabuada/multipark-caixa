@@ -33,6 +33,8 @@ export function buildWhere(f: Filters) {
   if (f.campanhaSemPgto) conds.push(sql`campanha_ok IS FALSE`);
   if (f.soComDiferencas) conds.push(sql`n_diferencas > 0`);
   if (f.revisaoEstado) conds.push(sql`revisao_estado = ${f.revisaoEstado}`);
+  if (f.revisto === "sim") conds.push(sql`revisto IS TRUE`);
+  if (f.revisto === "nao") conds.push(sql`revisto IS NOT TRUE`);
 
   if (!conds.length) return sql``;
   let w = conds[0];
@@ -58,6 +60,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     campanhaSemPgto: p.get("campanhaSemPgto") === "1",
     soComDiferencas: p.get("soComDiferencas") === "1",
     revisaoEstado: p.get("revisaoEstado") || undefined,
+    revisto: p.get("revisto") || undefined,
   };
 }
 

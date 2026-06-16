@@ -27,6 +27,9 @@ export async function GET(req: NextRequest) {
     if (p.get("soRevisao") === "1") conds.push(sql`revisao_manual IS TRUE`);
     if (p.get("soSemReserva") === "1") conds.push(sql`reserva_id IS NULL`);
     if (p.get("soComReserva") === "1") conds.push(sql`reserva_id IS NOT NULL`);
+    const rev = p.get("revisto");
+    if (rev === "sim") conds.push(sql`reserva_id IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL)`);
+    if (rev === "nao") conds.push(sql`(reserva_id IS NULL OR reserva_id NOT IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL))`);
     if (p.get("dataDe")) conds.push(sql`viva_data_hora >= ${p.get("dataDe")}::timestamptz`);
     if (p.get("dataAte")) conds.push(sql`viva_data_hora <= ${p.get("dataAte")}::timestamptz`);
 

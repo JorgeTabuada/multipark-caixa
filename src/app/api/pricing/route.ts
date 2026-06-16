@@ -19,6 +19,9 @@ function conds(p: URLSearchParams) {
     c.push(sql`(tem_metodo_vazio IS TRUE OR difere_caixa IS TRUE OR valor_suspeito IS TRUE OR (soma_total - soma_paga) > 0.01)`);
   if (p.get("soFaltaPagar") === "1") c.push(sql`(soma_total - soma_paga) > 0.01`);
   if (p.get("soSuspeito") === "1") c.push(sql`valor_suspeito IS TRUE`);
+  const rev = p.get("revisto");
+  if (rev === "sim") c.push(sql`multipark_id IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL)`);
+  if (rev === "nao") c.push(sql`(multipark_id IS NULL OR multipark_id NOT IN (SELECT multipark_id FROM staging.revisao WHERE estado IS NOT NULL AND multipark_id IS NOT NULL))`);
   if (p.get("metodo")) c.push(sql`metodos ILIKE ${"%" + p.get("metodo") + "%"}`);
   if (p.get("dataDe")) c.push(sql`saida >= ${p.get("dataDe")}::timestamptz`);
   if (p.get("dataAte")) c.push(sql`saida <= ${p.get("dataAte")}::timestamptz`);
