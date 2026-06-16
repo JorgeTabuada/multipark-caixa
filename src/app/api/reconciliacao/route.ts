@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
   try {
     const p = req.nextUrl.searchParams;
     const f = parseFilters(p);
-    const where = buildWhere(f);
+    // lookup exato por multipark_id (rápido, indexado) para o detalhe
+    const where = p.get("exato") && p.get("search")
+      ? sql`WHERE multipark_id = ${p.get("search")}`
+      : buildWhere(f);
     const order = safeOrder(p.get("sort"), p.get("dir"));
     const limit = Math.min(Number(p.get("limit") || 100), 2000);
     const offset = Math.max(Number(p.get("offset") || 0), 0);

@@ -64,14 +64,20 @@ const ESTADOS: { v: string; l: string; color: string }[] = [
   { v: "problema", l: "Problema", color: "#dc2626" },
 ];
 
-export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) {
+export function RowDetail({ id, onClose, ids, onNavigate }: {
+  id: string; onClose: () => void; ids?: string[]; onNavigate?: (id: string) => void;
+}) {
   const qc = useQueryClient();
+  const idx = ids ? ids.indexOf(id) : -1;
+  const prevId = idx > 0 ? ids![idx - 1] : null;
+  const nextId = ids && idx >= 0 && idx < ids.length - 1 ? ids[idx + 1] : null;
   // `id` é um termo de pesquisa (multipark id, matrícula ou reserva_id).
   const { data, isLoading } = useQuery({
     queryKey: ["detail", id],
     queryFn: async () => {
-      const r = await fetch(`/api/reconciliacao?raw=1&limit=1&search=${encodeURIComponent(id)}`);
-      const j = await r.json();
+      // lookup exato por multipark_id (rápido); fallback para pesquisa (matrícula, etc.)
+      let j = await (await fetch(`/api/reconciliacao?raw=1&limit=1&exato=1&search=${encodeURIComponent(id)}`)).json();
+      if (!j.rows?.length) j = await (await fetch(`/api/reconciliacao?raw=1&limit=1&search=${encodeURIComponent(id)}`)).json();
       return (j.rows?.[0] ?? null) as Record<string, unknown> | null;
     },
   });
@@ -120,6 +126,22 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
   const autoEstado = data ? (Number(data.n_diferencas) === 0 ? "ok" : "pendente") : "pendente";
   const efetivo = estado || autoEstado;
 
+  // navegação entre registos (sem fechar o modal)
+  const guardarESeguinte = async () => {
+    if (dirty) { try { await save.mutateAsync({ estado, notas }); } catch { /* ignora */ } }
+    if (nextId && onNavigate) onNavigate(nextId);
+  };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const tag = document.activeElement?.tagName || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "ArrowLeft" && prevId && onNavigate) onNavigate(prevId);
+      if (e.key === "ArrowRight" && nextId && onNavigate) onNavigate(nextId);
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [prevId, nextId, onNavigate]);
+
   // gestão de pagamentos da reserva (anexar / retirar)
   const [pvalor, setPvalor] = useState("");
   const [pcands, setPcands] = useState<Record<string, unknown>[] | null>(null);
@@ -158,9 +180,18 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
             {data && <span className="text-mut font-normal"> · {Number(data.n_diferencas) || 0} campo(s) diferente(s)</span>}
             {!isLoading && !data && <span className="text-[#d97706] font-normal"> · não encontrada na reconciliação</span>}
           </h3>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {copied && <span className="text-[#16a34a] text-xxs">copiado: {copied.length > 30 ? copied.slice(0, 28) + "…" : copied}</span>}
-            <button className="text-mut hover:text-txt text-lg leading-none" onClick={onClose}>✕</button>
+            {ids && onNavigate && (
+              <div className="flex items-center gap-1">
+                <button className="border border-line rounded-md px-2 py-1 text-xs text-mut hover:border-acc disabled:opacity-30"
+                  disabled={!prevId} onClick={() => prevId && onNavigate(prevId)} title="anterior (←)">←</button>
+                <span className="text-mut text-xxs">{idx >= 0 ? `${idx + 1}/${ids.length}` : ""}</span>
+                <button className="border border-line rounded-md px-2 py-1 text-xs text-mut hover:border-acc disabled:opacity-30"
+                  disabled={!nextId} onClick={() => nextId && onNavigate(nextId)} title="próximo (→)">→</button>
+              </div>
+            )}
+            <button className="text-mut hover:text-txt text-lg leading-none ml-1" onClick={onClose}>✕</button>
           </div>
         </div>
 
@@ -214,6 +245,13 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
               onClick={() => save.mutate({ estado, notas })}>
               {save.isPending ? "a guardar…" : "Guardar"}
             </button>
+            {nextId && onNavigate && (
+              <button
+                className="bg-ok text-white rounded-md px-4 py-1.5 text-xs font-semibold"
+                onClick={guardarESeguinte} title="guarda (se houver alterações) e vai ao próximo">
+                Guardar e seguinte →
+              </button>
+            )}
             {save.isSuccess && !dirty && <span className="text-[#16a34a] text-xxs">guardado ✓</span>}
             {dirty && <span className="text-mut text-xxs">alterações por guardar</span>}
           </div>

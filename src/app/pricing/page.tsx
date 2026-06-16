@@ -204,7 +204,9 @@ export default function PricingPage() {
 
       {detail && <PricingDetail row={detail} onClose={() => setDetail(null)}
         onAbrirReserva={(id) => { setDetail(null); setDetalheRes(id); }} />}
-      {detalheRes && <RowDetail id={detalheRes} onClose={() => setDetalheRes(null)} />}
+      {detalheRes && <RowDetail id={detalheRes} onClose={() => setDetalheRes(null)}
+        ids={(data.data?.rows ?? []).map((r) => String(r.multipark_id || "")).filter(Boolean)}
+        onNavigate={setDetalheRes} />}
     </main>
   );
 }

@@ -163,7 +163,9 @@ export default function MetodosPage() {
         </>
       )}
 
-      {detail && <RowDetail id={detail} onClose={() => setDetail(null)} />}
+      {detail && <RowDetail id={detail} onClose={() => setDetail(null)}
+        ids={(reservas.data?.rows ?? []).map((r) => String(r.multipark_id || "")).filter(Boolean)}
+        onNavigate={setDetail} />}
     </main>
   );
 }

@@ -226,7 +226,9 @@ export default function StripePage() {
         <button className="border border-line rounded-md px-3 py-1.5 text-mut hover:border-acc disabled:opacity-40" disabled={page + 1 >= totPages} onClick={() => setPage((x) => x + 1)}>seguinte →</button>
       </div>
 
-      {detail && <RowDetail id={detail} onClose={() => setDetail(null)} />}
+      {detail && <RowDetail id={detail} onClose={() => setDetail(null)}
+        ids={(data.data?.rows ?? []).map((raw) => String((raw.atrib_mp && raw.atrib_mp !== "" ? raw.atrib_mp : raw.mp_id) || raw.matricula || "")).filter(Boolean)}
+        onNavigate={setDetail} />}
     </main>
   );
 }

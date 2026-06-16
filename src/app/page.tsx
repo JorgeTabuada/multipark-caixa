@@ -156,7 +156,8 @@ export default function Page() {
           disabled={page + 1 >= totPages} onClick={() => setPage((p) => p + 1)}>seguinte →</button>
       </div>
 
-      {detail && <RowDetail id={detail} onClose={() => setDetail(null)} />}
+      {detail && <RowDetail id={detail} onClose={() => setDetail(null)}
+        ids={(data.data?.rows ?? []).map((r) => String(r.multipark_id))} onNavigate={setDetail} />}
     </main>
   );
 }
