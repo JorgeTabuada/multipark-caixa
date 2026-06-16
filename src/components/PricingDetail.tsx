@@ -15,6 +15,7 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
   const [proc, setProc] = useState<{ valor: number; metodo: string } | null>(null);
   const [res, setRes] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [descartados, setDescartados] = useState<Set<string>>(new Set());
 
   const copy = (v: unknown) => {
     const s = String(v ?? ""); if (!s) return;
@@ -31,10 +32,17 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
   const metodos = [...porMetodo.entries()];
 
   const procurar = async (valor: number, metodo: string) => {
-    setProc({ valor, metodo }); setRes(null); setLoading(true);
+    setProc({ valor, metodo }); setRes(null); setLoading(true); setDescartados(new Set());
     const data = String(row.saida || "");
     const j = await (await fetch(`/api/pricing/procurar?valor=${valor}&data=${encodeURIComponent(data)}&horas=72`)).json();
     setRes(j.resultados || []); setLoading(false);
+  };
+  const descartar = (ref: string) => setDescartados((s) => new Set(s).add(ref));
+  const fmtDelta = (sec: number) => {
+    const a = Math.abs(sec), sg = sec >= 0 ? "+" : "−";
+    if (a < 90) return `${sg}${a}s`;
+    if (a < 5400) return `${sg}${Math.round(a / 60)}min`;
+    return `${sg}${(a / 3600).toFixed(1)}h`;
   };
 
   return (
@@ -84,30 +92,42 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
         </div>
 
         {/* resultados da procura do valor parcial */}
-        {proc && (
-          <div className="border border-acc/40 rounded-lg p-3 mb-3">
-            <div className="text-sm font-semibold mb-2">
-              Pagamentos de {fmtMoney(proc.valor)} ({proc.metodo}) perto de {fmtDate(row.saida)}
-              {loading && <span className="text-mut font-normal"> · a procurar…</span>}
+        {proc && (() => {
+          const visiveis = (res || []).filter((r) => !descartados.has(String(r.ref)));
+          return (
+            <div className="border border-acc/40 rounded-lg p-3 mb-3">
+              <div className="text-sm font-semibold mb-1">
+                Pagamentos de {fmtMoney(proc.valor)} ({proc.metodo}) perto de {fmtDate(row.saida)}
+                {loading && <span className="text-mut font-normal"> · a procurar…</span>}
+              </div>
+              {!loading && visiveis.length > 1 && (
+                <div className="text-xs text-bad mb-2">⚠ {visiveis.length} pagamentos com este valor nesta janela — pode ser de outra reserva. Confirma pela hora (o mais próximo de 0s é o mais provável) e descarta os que não são.</div>
+              )}
+              {res && visiveis.length > 0 ? (
+                <table className="text-xs w-full">
+                  <thead><tr className="text-mut text-left"><th className="py-1">Fonte</th><th>Valor</th><th>Data</th><th>Δ hora</th><th>Tipo/Estado</th><th>Ref</th><th></th></tr></thead>
+                  <tbody>
+                    {visiveis.map((r, i) => {
+                      const d = Number(r.dsec) || 0;
+                      const perto = Math.abs(d) <= 90;
+                      return (
+                        <tr key={i} className={"border-t border-line/40 " + (i === 0 && perto ? "bg-okbg" : "")}>
+                          <td className="py-1"><span className="bg-chip rounded px-1.5 py-0.5">{String(r.fonte)}</span></td>
+                          <td className="tabular">{fmtMoney(r.valor)}</td>
+                          <td className="whitespace-nowrap">{fmtDate(r.data)}</td>
+                          <td className={"tabular " + (perto ? "text-ok font-semibold" : "text-mut")}>{fmtDelta(d)}</td>
+                          <td>{String(r.tipo ?? r.status ?? "")}</td>
+                          <td className="break-all cursor-pointer hover:text-acc" onClick={() => copy(r.ref)} title="copiar">{String(r.ref ?? "")}</td>
+                          <td><button className="text-mut hover:text-bad" title="descartar (não é este)" onClick={() => descartar(String(r.ref))}>✕</button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (!loading && <div className="text-mut text-sm">Nenhum pagamento de {fmtMoney(proc.valor)} encontrado nessa janela. (pode ter sido pago noutra altura, em multibanco/dinheiro físico, ou registado com outro valor)</div>)}
             </div>
-            {res && res.length > 0 ? (
-              <table className="text-xs w-full">
-                <thead><tr className="text-mut text-left"><th className="py-1">Fonte</th><th>Valor</th><th>Data</th><th>Tipo/Estado</th><th>Ref</th></tr></thead>
-                <tbody>
-                  {res.map((r, i) => (
-                    <tr key={i} className="border-t border-line/40">
-                      <td className="py-1"><span className="bg-chip rounded px-1.5 py-0.5">{String(r.fonte)}</span></td>
-                      <td className="tabular">{fmtMoney(r.valor)}</td>
-                      <td className="whitespace-nowrap">{fmtDate(r.data)}</td>
-                      <td>{String(r.tipo ?? r.status ?? "")}</td>
-                      <td className="break-all cursor-pointer hover:text-acc" onClick={() => copy(r.ref)} title="copiar">{String(r.ref ?? "")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (!loading && <div className="text-mut text-sm">Nenhum pagamento de {fmtMoney(proc.valor)} encontrado nessa janela. (pode ter sido pago noutra altura ou registado com outro valor)</div>)}
-          </div>
-        )}
+          );
+        })()}
 
         {/* itens do pricing */}
         <div className="text-sm font-semibold mb-1">Itens do pricing</div>
