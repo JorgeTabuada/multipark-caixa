@@ -194,7 +194,8 @@ export default function StripePage() {
             </tr>
           </thead>
           <tbody>
-            {(data.data?.rows ?? []).map((r, i) => {
+            {(data.data?.rows ?? []).map((raw, i) => {
+              const r = raw.atrib_mp ? { ...raw, mp_id: raw.atrib_mp, matricula: raw.atrib_mat ?? raw.matricula } : raw;
               const rid = (r.mp_id || r.matricula) as string | undefined;
               return (
                 <tr key={i} onClick={() => rid && setDetail(String(rid))}

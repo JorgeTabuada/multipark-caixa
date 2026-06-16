@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { fmtMoney, fmtDate } from "@/lib/format";
 
 interface Item { total?: number; description?: string; amountPaid?: number; paymentMethod?: string; }
@@ -17,6 +17,35 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
   const [outras, setOutras] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [descartados, setDescartados] = useState<Set<string>>(new Set());
+  const [atrib, setAtrib] = useState<Row[]>([]);
+
+  const mpId = row.multipark_id ? String(row.multipark_id) : "";
+  const carregarAtrib = useCallback(async () => {
+    if (!mpId) return;
+    const j = await (await fetch(`/api/atribuir?multipark_id=${encodeURIComponent(mpId)}`)).json();
+    setAtrib(j.atribuicoes || []);
+  }, [mpId]);
+  useEffect(() => { carregarAtrib(); }, [carregarAtrib]);
+
+  const atribuir = async (cand: Row, metodo: string) => {
+    await fetch("/api/atribuir", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fonte: String(cand.fonte || "").toLowerCase(), ref: cand.ref,
+        multipark_id: mpId, matricula: row.matricula, valor: cand.valor, metodo,
+      }),
+    });
+    carregarAtrib();
+  };
+  const desatribuir = async (a: Row) => {
+    await fetch("/api/atribuir", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fonte: a.fonte, ref: a.ref, multipark_id: null }),
+    });
+    carregarAtrib();
+  };
+  const jaAtribuido = (fonte: unknown, ref: unknown) =>
+    atrib.some((a) => String(a.fonte) === String(fonte).toLowerCase() && String(a.ref) === String(ref));
 
   const copy = (v: unknown) => {
     const s = String(v ?? ""); if (!s) return;
@@ -74,6 +103,24 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
           </span>
         </div>
 
+        {/* pagamentos já atribuídos a esta reserva */}
+        {atrib.length > 0 && (
+          <div className="bg-okbg border border-ok/30 rounded-lg p-3 mb-3">
+            <div className="text-sm font-semibold text-ok mb-1.5">✓ Pagamentos atribuídos a esta reserva</div>
+            <div className="flex flex-col gap-1">
+              {atrib.map((a, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className="bg-chip rounded px-1.5 py-0.5 text-xs">{String(a.fonte)}</span>
+                  <span className="tabular font-semibold">{fmtMoney(a.valor)}</span>
+                  {a.metodo ? <span className="text-mut">{String(a.metodo)}</span> : null}
+                  <span className="text-xs break-all cursor-pointer hover:text-acc" onClick={() => copy(a.ref)}>{String(a.ref)}</span>
+                  <button className="ml-auto text-xs text-mut hover:text-bad" onClick={() => desatribuir(a)}>remover</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* valor parcial POR MÉTODO (o que interessa nos pagamentos divididos) */}
         <div className="bg-panel2 border border-line rounded-lg p-3 mb-3">
           <div className="text-sm font-semibold mb-2">Pago por método {metodos.length > 1 && <span className="text-acc">· pagamento dividido</span>}</div>
@@ -120,7 +167,13 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
                           <td className={"tabular " + (perto ? "text-ok font-semibold" : "text-mut")}>{fmtDelta(d)}</td>
                           <td>{String(r.tipo ?? r.status ?? "")}</td>
                           <td className="break-all cursor-pointer hover:text-acc" onClick={() => copy(r.ref)} title="copiar">{String(r.ref ?? "")}</td>
-                          <td><button className="text-mut hover:text-bad" title="descartar (não é este)" onClick={() => descartar(String(r.ref))}>✕</button></td>
+                          <td className="whitespace-nowrap">
+                            {jaAtribuido(r.fonte, r.ref)
+                              ? <span className="text-ok text-xs font-semibold">✓ atribuído</span>
+                              : <button className="text-xs border border-ok/50 text-ok rounded px-2 py-0.5 hover:bg-okbg"
+                                  title="atribuir este pagamento a esta reserva" onClick={() => atribuir(r, proc.metodo)}>✓ é esta</button>}
+                            <button className="text-mut hover:text-bad ml-2" title="descartar (não é este)" onClick={() => descartar(String(r.ref))}>✕</button>
+                          </td>
                         </tr>
                       );
                     })}

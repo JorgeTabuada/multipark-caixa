@@ -82,6 +82,11 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
     queryFn: async () => (await fetch(`/api/revisao?id=${encodeURIComponent(realId)}`)).json() as Promise<{ estado: string | null; notas: string | null }>,
     enabled: !isLoading,
   });
+  const atr = useQuery({
+    queryKey: ["atrib", realId],
+    queryFn: async () => (await fetch(`/api/atribuir?multipark_id=${encodeURIComponent(realId)}`)).json() as Promise<{ atribuicoes: Record<string, unknown>[] }>,
+    enabled: !isLoading,
+  });
 
   const [estado, setEstado] = useState<string | null>(null);
   const [notas, setNotas] = useState("");
@@ -186,6 +191,21 @@ export function RowDetail({ id, onClose }: { id: string; onClose: () => void }) 
         </div>
 
         {isLoading && <div className="text-mut text-sm">a carregar…</div>}
+
+        {/* Pagamentos atribuídos manualmente a esta reserva */}
+        {atr.data?.atribuicoes && atr.data.atribuicoes.length > 0 && (
+          <div className="bg-okbg border border-ok/30 rounded-lg p-3 mb-3">
+            <div className="text-sm font-semibold text-ok mb-1">✓ Pagamentos atribuídos manualmente</div>
+            {atr.data.atribuicoes.map((a, i) => (
+              <div key={i} className="text-sm">
+                <span className="bg-chip rounded px-1.5 py-0.5 text-xs mr-2">{String(a.fonte)}</span>
+                <b>{a.valor != null ? Number(a.valor).toLocaleString("pt-PT", { minimumFractionDigits: 2 }) + " €" : ""}</b>
+                {a.metodo ? <span className="text-mut"> · {String(a.metodo)}</span> : null}
+                <span className="text-mut"> · {String(a.ref)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Diferenças encontradas — valores lado a lado de cada fonte */}
         {data && (() => {

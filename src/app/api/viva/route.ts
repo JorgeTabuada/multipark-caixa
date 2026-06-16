@@ -44,7 +44,10 @@ export async function GET(req: NextRequest) {
 
     const [{ count }] = await sql`SELECT count(*)::int AS count FROM staging.mv_viva_reservas ${where}`;
     const rows = await sql`
-      SELECT * FROM staging.mv_viva_reservas ${where}
+      SELECT mv.*,
+        (SELECT a.multipark_id FROM staging.atribuicao a WHERE a.fonte='viva' AND a.ref=mv.transaction_id) AS atrib_mp,
+        (SELECT a.matricula FROM staging.atribuicao a WHERE a.fonte='viva' AND a.ref=mv.transaction_id) AS atrib_mat
+      FROM staging.mv_viva_reservas mv ${where}
       ORDER BY ${sql(sortCol)} ${dir} NULLS LAST LIMIT ${limit} OFFSET ${offset}`;
 
     return NextResponse.json({ rows, total: count, limit, offset });
