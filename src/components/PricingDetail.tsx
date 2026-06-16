@@ -14,6 +14,7 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
   const [copied, setCopied] = useState<string | null>(null);
   const [proc, setProc] = useState<{ valor: number; metodo: string } | null>(null);
   const [res, setRes] = useState<Row[] | null>(null);
+  const [outras, setOutras] = useState<Row[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [descartados, setDescartados] = useState<Set<string>>(new Set());
 
@@ -32,10 +33,11 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
   const metodos = [...porMetodo.entries()];
 
   const procurar = async (valor: number, metodo: string) => {
-    setProc({ valor, metodo }); setRes(null); setLoading(true); setDescartados(new Set());
+    setProc({ valor, metodo }); setRes(null); setOutras(null); setLoading(true); setDescartados(new Set());
     const data = String(row.saida || "");
-    const j = await (await fetch(`/api/pricing/procurar?valor=${valor}&data=${encodeURIComponent(data)}&horas=72`)).json();
-    setRes(j.resultados || []); setLoading(false);
+    const excl = row.multipark_id ? `&excluir=${encodeURIComponent(String(row.multipark_id))}` : "";
+    const j = await (await fetch(`/api/pricing/procurar?valor=${valor}&data=${encodeURIComponent(data)}&horas=72${excl}`)).json();
+    setRes(j.resultados || []); setOutras(j.reservas || []); setLoading(false);
   };
   const descartar = (ref: string) => setDescartados((s) => new Set(s).add(ref));
   const fmtDelta = (sec: number) => {
@@ -125,6 +127,33 @@ export function PricingDetail({ row, onClose }: { row: Row; onClose: () => void 
                   </tbody>
                 </table>
               ) : (!loading && <div className="text-mut text-sm">Nenhum pagamento de {fmtMoney(proc.valor)} encontrado nessa janela. (pode ter sido pago noutra altura, em multibanco/dinheiro físico, ou registado com outro valor)</div>)}
+
+              {/* outras reservas com um item deste valor no mesmo período */}
+              {outras && outras.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-line">
+                  <div className="text-xs font-semibold text-bad mb-1">
+                    ⚠ {outras.length} outra(s) reserva(s) com um item de {fmtMoney(proc.valor)} neste período — o pagamento pode pertencer a uma destas:
+                  </div>
+                  <table className="text-xs w-full">
+                    <thead><tr className="text-mut text-left"><th className="py-1">Matrícula</th><th>Cidade</th><th>Saída</th><th>Δ hora</th><th>Métodos</th><th>ID</th></tr></thead>
+                    <tbody>
+                      {outras.map((r, i) => {
+                        const d = Number(r.dsec) || 0; const perto = Math.abs(d) <= 120;
+                        return (
+                          <tr key={i} className={"border-t border-line/40 " + (perto ? "bg-badbg" : "")}>
+                            <td className="py-1 font-medium cursor-pointer hover:text-acc" onClick={() => copy(r.matricula)} title="copiar">{String(r.matricula ?? "")}</td>
+                            <td>{String(r.cidade ?? "")}</td>
+                            <td className="whitespace-nowrap">{fmtDate(r.saida)}</td>
+                            <td className={"tabular " + (perto ? "text-bad font-semibold" : "text-mut")}>{fmtDelta(d)}</td>
+                            <td>{String(r.metodos ?? "")}</td>
+                            <td className="break-all cursor-pointer hover:text-acc" onClick={() => copy(r.multipark_id)} title="copiar">{String(r.multipark_id ?? "").slice(0, 14)}…</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           );
         })()}

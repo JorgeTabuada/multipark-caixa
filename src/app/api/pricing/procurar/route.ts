@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const data = p.get("data"); // ISO (saída/checkout da reserva)
     if (!valor || !data) return NextResponse.json({ error: "falta valor ou data" }, { status: 400 });
     const horas = Math.min(Number(p.get("horas") || 48), 240); // janela ± horas (default 48h)
+    const excluir = p.get("excluir"); // multipark_id da reserva atual (não incluir)
     const lo = valor - 0.01, hi = valor + 0.01;
     const jan = `${horas} hours`;
 
@@ -44,7 +45,20 @@ export async function GET(req: NextRequest) {
       ORDER BY abs(extract(epoch FROM (actiondate - ${data}::timestamptz))) ASC LIMIT 25`;
 
     const resultados = [...stripe, ...viva, ...caixa].sort((a, b) => Math.abs(Number(a.dsec)) - Math.abs(Number(b.dsec)));
-    return NextResponse.json({ valor, data, horas, resultados });
+
+    // outras reservas cujo pricing tem um item deste valor no mesmo período
+    // (ajuda a perceber se o pagamento pode pertencer a outra reserva)
+    const reservas = await sql`
+      SELECT multipark_id, matricula, cidade, saida, valor_reserva, metodos,
+             round(extract(epoch FROM (saida - ${data}::timestamptz)))::int AS dsec
+      FROM staging.mv_pricing
+      WHERE saida BETWEEN ${data}::timestamptz - ${jan}::interval AND ${data}::timestamptz + ${jan}::interval
+        AND (${excluir}::text IS NULL OR multipark_id IS DISTINCT FROM ${excluir})
+        AND EXISTS (SELECT 1 FROM jsonb_array_elements(pricing_json) e
+                    WHERE (e->>'total')::numeric BETWEEN ${lo} AND ${hi})
+      ORDER BY abs(extract(epoch FROM (saida - ${data}::timestamptz))) ASC LIMIT 25`;
+
+    return NextResponse.json({ valor, data, horas, resultados, reservas });
   } catch (e: unknown) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
