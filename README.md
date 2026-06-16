@@ -102,6 +102,16 @@ export CSV. (Confirmado: o paymentIntent está sempre na coluna `paymentintentid
 campos alternativos.)
 Migration: `migrations/0003_stripe_reservas.sql` (`staging.mv_stripe_reservas`).
 
+### Página "Pricing" (`/pricing`)
+Decompõe o campo `pricings` (array JSON do Backoffice/Caixa) por reserva: cada item
+`{total, description, amountPaid, paymentMethod}`. Mostra os itens lado a lado (valet ·
+estacionamento · entrega · extras), os **métodos de pagamento** e deteta:
+**≥2 tipos de pagamento** na mesma reserva (583), **item sem método** (2.387), **por pagar**
+(soma total > soma paga) e **divergência com a Caixa**. KPIs por categoria (€ valet /
+estacionamento / extras) e filtros (só multi-pagamento, só com problema, só por pagar).
+Clicar abre o detalhe da reserva. Migration: `migrations/0005_pricing.sql`
+(`staging.mv_pricing` + `staging.v_pricing`).
+
 ### Página "Campanhas" (`/campanhas`)
 Selector de campanha (98 campanhas das 3 fontes que têm o campo). Para a campanha
 escolhida mostra: **totais por fonte** (nº reservas, € valor, € pago na caixa), badges de
