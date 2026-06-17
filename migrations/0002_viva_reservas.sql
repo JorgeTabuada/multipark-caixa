@@ -134,5 +134,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_mvr_tx ON staging.mv_viva_reservas (transac
 CREATE INDEX IF NOT EXISTS ix_mvr_conf ON staging.mv_viva_reservas (confianca);
 CREATE INDEX IF NOT EXISTS ix_mvr_dh ON staging.mv_viva_reservas (viva_data_hora);
 CREATE INDEX IF NOT EXISTS ix_mvr_mat ON staging.mv_viva_reservas (matricula);
+CREATE INDEX IF NOT EXISTS ix_mvr_reserva ON staging.mv_viva_reservas (reserva_id);
 CREATE INDEX IF NOT EXISTS ix_mvr_fonte ON staging.mv_viva_reservas (fonte_reserva);
 CREATE INDEX IF NOT EXISTS ix_mvr_rev ON staging.mv_viva_reservas (revisao_manual);

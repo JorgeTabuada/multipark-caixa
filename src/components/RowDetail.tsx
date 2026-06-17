@@ -93,6 +93,12 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
     queryFn: async () => (await fetch(`/api/reserva-pagamentos?multipark_id=${encodeURIComponent(realId)}`)).json() as Promise<{ pagamentos: Record<string, unknown>[] }>,
     enabled: !isLoading,
   });
+  // override manual de pagamento (método corrigido / estado pago-não pago-falta valor)
+  const ov = useQuery({
+    queryKey: ["override", realId],
+    queryFn: async () => (await fetch(`/api/override?id=${encodeURIComponent(realId)}`)).json() as Promise<{ metodo: string | null; pago_estado: string | null; pago_valor: number | null }>,
+    enabled: !isLoading,
+  });
 
   const [estado, setEstado] = useState<string | null>(null);
   const [notas, setNotas] = useState("");
@@ -175,8 +181,41 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
     await fetch("/api/atribuir", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ acao: "retirar", fonte: p.fonte, ref: p.ref, multipark_id: realId }) });
     qc.invalidateQueries({ queryKey: ["pags", realId] });
+    qc.invalidateQueries({ queryKey: ["detail", id] });
     qc.invalidateQueries({ queryKey: ["recon"] });
   };
+
+  // ---- Override manual de pagamento (método / estado pago) ----
+  const [omEtodo, setOmetodo] = useState("");
+  const [opEstado, setOpestado] = useState<string | null>(null);
+  const [oValor, setOvalor] = useState("");
+  const [oDirty, setOdirty] = useState(false);
+  useEffect(() => {
+    if (ov.data) {
+      setOmetodo(ov.data.metodo || "");
+      setOpestado(ov.data.pago_estado || null);
+      setOvalor(ov.data.pago_valor != null ? String(ov.data.pago_valor) : "");
+      setOdirty(false);
+    }
+  }, [ov.data]);
+  const saveOverride = useMutation({
+    mutationFn: async () =>
+      fetch("/api/override", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: realId, metodo: omEtodo, pago_estado: opEstado,
+          pago_valor: oValor === "" ? null : oValor.replace(",", ".") }) }).then((r) => r.json()),
+    onSuccess: () => {
+      setOdirty(false);
+      qc.invalidateQueries({ queryKey: ["override", realId] });
+      qc.invalidateQueries({ queryKey: ["recon"] });
+    },
+  });
+  const PAGO: { v: string; l: string; color: string }[] = [
+    { v: "pago", l: "Pago", color: "#16a34a" },
+    { v: "nao_pago", l: "Não pago", color: "#dc2626" },
+    { v: "falta_valor", l: "Falta valor", color: "#d97706" },
+  ];
+  const METODOS = ["Multibanco", "Numerário", "Dinheiro", "MB WAY", "Online", "Viva Wallet",
+    "Stripe", "Transferência", "Cartão", "No Pay"];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6" onClick={onClose}>
@@ -218,6 +257,22 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
                   📋 {l}: <span className="text-txt/90">{String(v)}</span>
                 </button>
               ))}
+          </div>
+        )}
+
+        {/* Indicador de correções manuais ativas (visível em qualquer aba) */}
+        {(ov.data?.metodo || ov.data?.pago_estado) && (
+          <div className="flex flex-wrap gap-1.5 mb-3 text-xxs">
+            {ov.data?.metodo && (
+              <span className="bg-[#e0ecff] text-acc rounded-md px-2 py-1 font-semibold">✎ Método: {ov.data.metodo}</span>
+            )}
+            {ov.data?.pago_estado && (
+              <span className="rounded-md px-2 py-1 font-semibold text-white"
+                style={{ background: ov.data.pago_estado === "pago" ? "#16a34a" : ov.data.pago_estado === "nao_pago" ? "#dc2626" : "#d97706" }}>
+                ✎ {ov.data.pago_estado === "pago" ? "Pago" : ov.data.pago_estado === "nao_pago" ? "Não pago" : "Falta valor"}
+                {ov.data.pago_valor != null ? ` · ${fmtMoney(ov.data.pago_valor)}` : ""}
+              </span>
+            )}
           </div>
         )}
 
@@ -325,6 +380,51 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
               </table>
             )}
             {pcands && pcands.length === 0 && !ploading && <div className="text-mut text-xs mt-1">Nenhum pagamento desse valor perto da data.</div>}
+          </div>
+        )}
+
+        {/* Pagamento (manual): corrigir método e marcar estado de pagamento */}
+        {data && (
+          <div className="bg-panel2 border border-line rounded-lg p-3 mb-3">
+            <div className="text-sm font-semibold mb-2">Pagamento (manual)
+              <span className="text-mut font-normal text-xs"> — corrige o que as fontes têm errado/em falta</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="text-xs text-mut">Método:</span>
+              <input list="metodos-list" className="bg-panel border border-line rounded-md px-2 py-1 text-xs w-40"
+                placeholder="(automático)" value={omEtodo}
+                onChange={(e) => { setOmetodo(e.target.value); setOdirty(true); }} />
+              <datalist id="metodos-list">{METODOS.map((m) => <option key={m} value={m} />)}</datalist>
+              {omEtodo && <button className="text-xxs text-mut hover:text-bad" title="limpar método"
+                onClick={() => { setOmetodo(""); setOdirty(true); }}>✕</button>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-mut mr-1">Estado:</span>
+              {PAGO.map((e) => {
+                const active = opEstado === e.v;
+                return (
+                  <button key={e.v}
+                    onClick={() => { setOpestado(active ? null : e.v); setOdirty(true); }}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold border"
+                    style={active
+                      ? { background: e.color, borderColor: e.color, color: "#fff" }
+                      : { background: "transparent", borderColor: e.color + "66", color: e.color }}>
+                    {e.l}
+                  </button>
+                );
+              })}
+              {(opEstado === "falta_valor" || opEstado === "pago") && (
+                <input className="bg-panel border border-line rounded-md px-2 py-1 text-xs w-28"
+                  placeholder={opEstado === "falta_valor" ? "valor em falta €" : "valor pago €"}
+                  value={oValor} onChange={(e) => { setOvalor(e.target.value); setOdirty(true); }} />
+              )}
+              <button className="bg-acc text-white rounded-md px-4 py-1.5 text-xs font-semibold disabled:opacity-40 ml-auto"
+                disabled={!oDirty || saveOverride.isPending}
+                onClick={() => saveOverride.mutate()}>
+                {saveOverride.isPending ? "a guardar…" : "Guardar pagamento"}
+              </button>
+              {saveOverride.isSuccess && !oDirty && <span className="text-[#16a34a] text-xxs">guardado ✓</span>}
+            </div>
           </div>
         )}
 
