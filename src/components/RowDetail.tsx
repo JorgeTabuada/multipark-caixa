@@ -98,12 +98,14 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
   const [notas, setNotas] = useState("");
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [paraColar, setParaColar] = useState("");
 
   const copy = (v: unknown) => {
     const s = String(v ?? "");
     if (!s) return;
     navigator.clipboard?.writeText(s).catch(() => {});
     setCopied(s);
+    setParaColar(s); // fica disponível para colar nas notas ao clicar lá
     window.setTimeout(() => setCopied((c) => (c === s ? null : c)), 1500);
   };
 
@@ -127,8 +129,10 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
   const efetivo = estado || autoEstado;
 
   // navegação entre registos (sem fechar o modal)
-  const guardarESeguinte = async () => {
-    if (dirty) { try { await save.mutateAsync({ estado, notas }); } catch { /* ignora */ } }
+  // marca OK/Resolvido, guarda e vai ao seguinte (aprovação em série, 1 clique)
+  const okEGuardarESeguinte = async () => {
+    try { await save.mutateAsync({ estado: "ok", notas }); } catch { /* ignora */ }
+    setEstado("ok"); setDirty(false);
     if (nextId && onNavigate) onNavigate(nextId);
   };
   useEffect(() => {
@@ -166,9 +170,12 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
     return `${sg}${(a / 3600).toFixed(1)}h`;
   };
   const retirarPag = async (p: Record<string, unknown>) => {
+    // grava sempre "retirado" (string vazia) — assim o match automático também
+    // fica anulado e o pagamento não reaparece
     await fetch("/api/atribuir", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ acao: p.origem === "manual" ? "auto" : "retirar", fonte: p.fonte, ref: p.ref, multipark_id: realId }) });
+      body: JSON.stringify({ acao: "retirar", fonte: p.fonte, ref: p.ref, multipark_id: realId }) });
     qc.invalidateQueries({ queryKey: ["pags", realId] });
+    qc.invalidateQueries({ queryKey: ["recon"] });
   };
 
   return (
@@ -235,9 +242,13 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
           </div>
           <textarea
             className="w-full bg-panel border border-line rounded-md p-2 text-xs min-h-[70px] focus:outline-none focus:border-acc"
-            placeholder="Notas: o que se passa, o que falta, o que foi feito…"
+            placeholder="Notas: o que se passa, o que falta, o que foi feito… (se copiaste algo, clica aqui para colar)"
             value={notas}
+            onFocus={() => {
+              if (paraColar) { setNotas((n) => (n ? n + " " : "") + paraColar); setDirty(true); setParaColar(""); }
+            }}
             onChange={(e) => { setNotas(e.target.value); setDirty(true); }} />
+          {paraColar && <div className="text-xxs text-acc mt-1">clica nas notas para colar: {paraColar.length > 30 ? paraColar.slice(0, 28) + "…" : paraColar}</div>}
           <div className="flex items-center gap-2 mt-2">
             <button
               className="bg-acc text-white rounded-md px-4 py-1.5 text-xs font-semibold disabled:opacity-40"
@@ -248,8 +259,8 @@ export function RowDetail({ id, onClose, ids, onNavigate }: {
             {nextId && onNavigate && (
               <button
                 className="bg-ok text-white rounded-md px-4 py-1.5 text-xs font-semibold"
-                onClick={guardarESeguinte} title="guarda (se houver alterações) e vai ao próximo">
-                Guardar e seguinte →
+                onClick={okEGuardarESeguinte} title="marca OK/Resolvido, guarda e vai ao próximo">
+                ✓ OK + guardar + seguinte →
               </button>
             )}
             {save.isSuccess && !dirty && <span className="text-[#16a34a] text-xxs">guardado ✓</span>}

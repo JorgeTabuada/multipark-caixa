@@ -40,7 +40,7 @@ export function PricingDetail({ row, onClose, onAbrirReserva }: { row: Row; onCl
   const desatribuir = async (a: Row) => {
     await fetch("/api/atribuir", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fonte: a.fonte, ref: a.ref, multipark_id: null }),
+      body: JSON.stringify({ acao: "retirar", fonte: a.fonte, ref: a.ref }),
     });
     carregarAtrib();
   };
