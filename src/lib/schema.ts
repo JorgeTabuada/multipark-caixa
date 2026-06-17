@@ -216,4 +216,5 @@ export interface Filters {
   soComDiferencas?: boolean;
   revisaoEstado?: string;
   revisto?: string;
+  acaoOcorrencia?: boolean;
 }

@@ -38,6 +38,7 @@ function buildParams(f: Filters, extra: Record<string, string> = {}) {
   if (f.soComDiferencas) p.set("soComDiferencas", "1");
   if (f.revisaoEstado) p.set("revisaoEstado", f.revisaoEstado);
   if (f.revisto) p.set("revisto", f.revisto);
+  if (f.acaoOcorrencia) p.set("acaoOcorrencia", "1");
   Object.entries(extra).forEach(([k, v]) => p.set(k, v));
   return p.toString();
 }

@@ -88,6 +88,7 @@ export function FiltersBar({
         <Chk on={!!f.campanhaDiverge} set={(v) => set({ campanhaDiverge: v })} label="campanha diverge" />
         <Chk on={!!f.actionDiverge} set={(v) => set({ actionDiverge: v })} label="action diverge" />
         <Chk on={!!f.campanhaSemPgto} set={(v) => set({ campanhaSemPgto: v })} label="campanha s/ pagamento" />
+        <Chk on={!!f.acaoOcorrencia} set={(v) => set({ acaoOcorrencia: v })} label="alteração/atualização ou c/ ocorrência" />
       </div>
       <div className="flex gap-2 ml-auto mb-0.5">
         <button className="bg-transparent border border-line text-mut rounded-md px-3 py-1.5 text-xs hover:border-acc"

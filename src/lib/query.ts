@@ -35,6 +35,13 @@ export function buildWhere(f: Filters) {
   if (f.revisaoEstado) conds.push(sql`revisao_estado = ${f.revisaoEstado}`);
   if (f.revisto === "sim") conds.push(sql`revisto IS TRUE`);
   if (f.revisto === "nao") conds.push(sql`revisto IS NOT TRUE`);
+  // action = "Alteração na consulta"/"Atualização" OU ocorrência preenchida
+  if (f.acaoOcorrencia) conds.push(sql`(
+    action_bo IN ('Alteração na consulta', 'Atualização')
+    OR action_caixa IN ('Alteração na consulta', 'Atualização')
+    OR nullif(btrim(ocorrence_bo), '') IS NOT NULL
+    OR nullif(btrim(ocorrence_caixa), '') IS NOT NULL
+  )`);
 
   if (!conds.length) return sql``;
   let w = conds[0];
@@ -61,6 +68,7 @@ export function parseFilters(p: URLSearchParams): Filters {
     soComDiferencas: p.get("soComDiferencas") === "1",
     revisaoEstado: p.get("revisaoEstado") || undefined,
     revisto: p.get("revisto") || undefined,
+    acaoOcorrencia: p.get("acaoOcorrencia") === "1",
   };
 }
 
